@@ -28,6 +28,7 @@ class WorldBackup:
         dist._world = dist._World()
         print(f"addr of _world after reset = {hex(id(dist._world))}")
         dist.GroupMember.WORLD = None
+        dist._backend = "undefined"
         dist._pg_map = {}
         dist._pg_names = {}
         dist._pg_group_ranks = {}
