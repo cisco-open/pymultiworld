@@ -1,0 +1,136 @@
+diff --git a/torch/csrc/distributed/c10d/PrefixStore.cpp b/torch/csrc/distributed/c10d/PrefixStore.cpp
+index 54f6ac96a84..84f798cdf80 100644
+--- a/torch/csrc/distributed/c10d/PrefixStore.cpp
++++ b/torch/csrc/distributed/c10d/PrefixStore.cpp
+@@ -1,10 +1,13 @@
+ #include <torch/csrc/distributed/c10d/PrefixStore.hpp>
+ #include <utility>
++#include <iostream>
+ 
+ namespace c10d {
+ 
+ PrefixStore::PrefixStore(std::string prefix, c10::intrusive_ptr<Store> store)
+-    : prefix_(std::move(prefix)), store_(std::move(store)) {}
++    : prefix_(std::move(prefix)), store_(std::move(store)) {
++  std::cout << ">>> torch::distributed::c10d: prefix = " << prefix << std::endl;
++}
+ 
+ std::string PrefixStore::joinKey(const std::string& key) {
+   return prefix_ + "/" + key;
+diff --git a/torch/csrc/distributed/c10d/ProcessGroupGloo.cpp b/torch/csrc/distributed/c10d/ProcessGroupGloo.cpp
+index d3c9a612c46..f1097b47859 100644
+--- a/torch/csrc/distributed/c10d/ProcessGroupGloo.cpp
++++ b/torch/csrc/distributed/c10d/ProcessGroupGloo.cpp
+@@ -44,6 +44,8 @@
+ #include <gloo/rendezvous/context.h>
+ #include <gloo/rendezvous/prefix_store.h>
+ 
++#include <unistd.h>
++
+ #ifdef _WIN32
+ #define GENERATE_ALL_TYPES(type, func, ...)      \
+   switch (type) {                                \
+@@ -780,34 +782,50 @@ ProcessGroupGloo::ProcessGroupGloo(
+   // option is needed if you have a fast NIC that cannot be saturated
+   // by a single I/O thread.
+   //
++  std::cout << ">>> pid = " << getpid()
++	    << " orig store addr = " << std::addressof(*store)
++	    << " store_ addr = " << std::addressof(*store_) << std::endl;
++
+   contexts_.reserve(options->devices.size());
+   for (const auto i : c10::irange(options->devices.size())) {
+     auto context = std::make_shared<::gloo::rendezvous::Context>(rank_, size_);
+     auto store = ::gloo::rendezvous::PrefixStore(std::to_string(i), *store_);
+     context->setTimeout(options->timeout);
++
++    std::cout << ">>> pid = " << getpid()
++	      << " [" << i << "] rank = " << rank_
++	      << " store addr = " << std::addressof(store)
++	      << std::endl;
++
+     try {
+       context->connectFullMesh(store, options->devices[i]);
++      std::cout << ">>> 7 index: " << i << std::endl;
+     } catch (const std::runtime_error& e) {
+       auto err = e.what();
+       // TORCH_CHECK to print the cpp stacktrace.
+       auto msg = c10::str("Gloo connectFullMesh failed with ", err);
+       logAndThrow(msg, msg);
+     }
++    std::cout << ">>> 8 index: " << i << std::endl;
+     contexts_.push_back(std::move(context));
++    std::cout << ">>> 9 index: " << i << std::endl;
+   }
+-
++  std::cout << ">>> 10" << std::endl;
+   // Every worker thread stores the AsyncWork object it's currently
+   // working on in the workInProgress_ vector. It must have size equal
+   // to the number of workers such that they can simply index into it
+   // using the worker index they are started with.
+   workInProgress_.resize(options->threads);
+-
++  std::cout << ">>> 11" << std::endl;
+   threads_.resize(options->threads);
+   for (const auto i : c10::irange(threads_.size())) {
++    std::cout << ">>> 12 thread " << i << std::endl;
+     threads_[i] = std::thread(&ProcessGroupGloo::runLoop, this, i);
++    std::cout << ">>> 13 thread " << i << std::endl;
+   }
+-
++  std::cout << ">>> 14" << std::endl;
+   init();
++  std::cout << ">>> 15" << std::endl;
+ }
+ 
+ ProcessGroupGloo::~ProcessGroupGloo() {
+diff --git a/torch/distributed/__init__.py b/torch/distributed/__init__.py
+index 5fb05a34771..871f7a25526 100644
+--- a/torch/distributed/__init__.py
++++ b/torch/distributed/__init__.py
+@@ -108,6 +108,17 @@ if is_available():
+         _coalescing_manager,
+         _CoalescingManager,
+         _get_process_group_name,
++        # MLEE: for miniworld
++        GroupMember,
++        _backend,
++        _group_count,
++        _pg_backend_config,
++        _pg_group_ranks,
++        _pg_map,
++        _pg_names,
++        _rank_not_in_group,
++        _world,
++        _World,
+     )
+ 
+     from .rendezvous import (
+diff --git a/torch/distributed/distributed_c10d.py b/torch/distributed/distributed_c10d.py
+index db553f6bf4a..e172ea92ddf 100644
+--- a/torch/distributed/distributed_c10d.py
++++ b/torch/distributed/distributed_c10d.py
+@@ -1426,6 +1426,7 @@ def _new_process_group_helper(
+             return GroupMember.NON_GROUP_MEMBER, None
+ 
+     prefix_store = PrefixStore(f"{group_name}/", store)
++    
+     base_pg_options = ProcessGroup.Options(backend=str(backend))
+     base_pg_options._timeout = timeout
+     pg: ProcessGroup = ProcessGroup(prefix_store, group_rank, group_size, base_pg_options)
+@@ -1456,6 +1457,7 @@ def _new_process_group_helper(
+             # TODO: remove this check after lazy initialization is supported
+             # if pg_options is not None:
+             #     raise RuntimeError("GLOO options not supported")
++            print(f">>> before calling ProcessGroupGloo: backend_prefix_store = {backend_prefix_store}")
+             backend_class = ProcessGroupGloo(backend_prefix_store, group_rank, group_size, timeout=timeout)
+             backend_type = ProcessGroup.BackendType.GLOO
+         elif backend_str == Backend.NCCL:
+@@ -3714,6 +3716,7 @@ def _create_process_group_wrapper(
+     # Create a separate prefix store for the helper process group.
+     prefix = f"{PG_WRAPPER_STORE_PREFIX}:{store_prefix}"
+     store = PrefixStore(prefix, store)
++    print(f">>> _create_process_group_wrapper: store = {store}")
+     helper_pg = ProcessGroupGloo(store, rank, world_size, timeout=timeout)
+     # Wrap the underlying pg with ProcessGroupWrapper.
+     wrapped_pg = _ProcessGroupWrapper(wrapped_pg, helper_pg)
