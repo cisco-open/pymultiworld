@@ -25,7 +25,11 @@ class WorldBackup:
 
     @classmethod
     def reset(cls, dist):
+        print(f">>>>>>>>>> group_count = {dist._world.group_count}")
+        print(f">>>>>>>>>> _group_count = {dist._group_count}")
         dist._world = dist._World()
+        print(f"<<<<<<<< group_count = {dist._world.group_count}")
+        print(f"<<<<<<<< _group_count = {dist._group_count}")
         print(f"addr of _world after reset = {hex(id(dist._world))}")
         dist.GroupMember.WORLD = None
         dist._backend = "undefined"
@@ -53,11 +57,12 @@ def init_process(port, world_name, rank, size, fn, backend="gloo"):
     """Initialize the distributed environment."""
     os.environ["MASTER_ADDR"] = "127.0.0.1"
     os.environ["MASTER_PORT"] = port
-    print(f"port = {port}")
+    print(f"{os.getpid()} port = {port}")
     store = dist.TCPStore(
         "127.0.0.1", int(port), 2, True if rank == 0 else False, timedelta(seconds=30)
     )
-    dist.init_process_group(backend, rank=rank, world_size=size, store=store)
+    print(f"tcp store: {store}")
+    dist.init_process_group(backend, rank=rank, world_size=size, store=store, group_name=world_name)
     # dist.init_process_group(backend, rank=rank, world_size=size)
     print("init_process_group done")
     fn(world_name, rank, size)
@@ -84,7 +89,7 @@ if __name__ == "__main__":
     processes = []
     mp.set_start_method("spawn")
 
-    pset = create_world("30500", "world2", run, dummy)
+    pset = create_world("29500", "world1", run, dummy)
     processes += pset
 
     # save distributed config
@@ -92,7 +97,7 @@ if __name__ == "__main__":
     world_backup = WorldBackup(dist)
     WorldBackup.reset(dist)
 
-    pset = create_world("29500", "world1", run, dummy)
+    pset = create_world("30500", "world2", run, dummy)
     processes += pset
 
     print("here")

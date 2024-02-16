@@ -23,12 +23,12 @@ def init_process(port, world_name, rank, size, fn, backend="gloo"):
     """Initialize the distributed environment."""
     os.environ["MASTER_ADDR"] = "127.0.0.1"
     os.environ["MASTER_PORT"] = port
-    print(f"port = {port}")
-    # store = dist.TCPStore(
-    #     "127.0.0.1", 29500, 2, True if rank == 0 else False, timedelta(seconds=30)
-    # )
-    # dist.init_process_group(backend, rank=rank, world_size=size, store=store)
-    dist.init_process_group(backend, rank=rank, world_size=size)
+    print(f"{os.getpid()} port = {port}")
+    store = dist.TCPStore(
+        "127.0.0.1", 29500, 2, True if rank == 0 else False, timedelta(seconds=30)
+    )
+    dist.init_process_group(backend, rank=rank, world_size=size, store=store, group_name=world_name)
+    # dist.init_process_group(backend, rank=rank, world_size=size)
 
     print("init_process_group done")
     fn(world_name, rank, size)
