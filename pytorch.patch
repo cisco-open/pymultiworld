@@ -1,24 +1,29 @@
 diff --git a/torch/csrc/distributed/c10d/PrefixStore.cpp b/torch/csrc/distributed/c10d/PrefixStore.cpp
-index 54f6ac96a84..84f798cdf80 100644
+index 54f6ac96a84..2c661c5b36f 100644
 --- a/torch/csrc/distributed/c10d/PrefixStore.cpp
 +++ b/torch/csrc/distributed/c10d/PrefixStore.cpp
-@@ -1,10 +1,13 @@
+@@ -1,12 +1,18 @@
  #include <torch/csrc/distributed/c10d/PrefixStore.hpp>
  #include <utility>
 +#include <iostream>
++#include <unistd.h>
  
  namespace c10d {
  
  PrefixStore::PrefixStore(std::string prefix, c10::intrusive_ptr<Store> store)
 -    : prefix_(std::move(prefix)), store_(std::move(store)) {}
 +    : prefix_(std::move(prefix)), store_(std::move(store)) {
-+  std::cout << ">>> torch::distributed::c10d: prefix = " << prefix << std::endl;
++  std::cout << getpid() << " >>> torch::distributed::c10d: prefix_ = " << prefix_ << std::endl;
 +}
  
  std::string PrefixStore::joinKey(const std::string& key) {
++  std::cout << ">>> torch::distributed::c10d: prefix_ = " << prefix_
++	    << " key = " << key << std::endl;
    return prefix_ + "/" + key;
+ }
+ 
 diff --git a/torch/csrc/distributed/c10d/ProcessGroupGloo.cpp b/torch/csrc/distributed/c10d/ProcessGroupGloo.cpp
-index d3c9a612c46..f1097b47859 100644
+index d3c9a612c46..d10c7911e70 100644
 --- a/torch/csrc/distributed/c10d/ProcessGroupGloo.cpp
 +++ b/torch/csrc/distributed/c10d/ProcessGroupGloo.cpp
 @@ -44,6 +44,8 @@
@@ -30,7 +35,7 @@ index d3c9a612c46..f1097b47859 100644
  #ifdef _WIN32
  #define GENERATE_ALL_TYPES(type, func, ...)      \
    switch (type) {                                \
-@@ -780,34 +782,50 @@ ProcessGroupGloo::ProcessGroupGloo(
+@@ -780,34 +782,51 @@ ProcessGroupGloo::ProcessGroupGloo(
    // option is needed if you have a fast NIC that cannot be saturated
    // by a single I/O thread.
    //
@@ -45,7 +50,8 @@ index d3c9a612c46..f1097b47859 100644
      context->setTimeout(options->timeout);
 +
 +    std::cout << ">>> pid = " << getpid()
-+	      << " [" << i << "] rank = " << rank_
++	      << " [" << i << "] rank_ = " << rank_
++	      << " rank = " << rank
 +	      << " store addr = " << std::addressof(store)
 +	      << std::endl;
 +
@@ -84,6 +90,72 @@ index d3c9a612c46..f1097b47859 100644
  }
  
  ProcessGroupGloo::~ProcessGroupGloo() {
+diff --git a/torch/csrc/distributed/c10d/TCPStore.cpp b/torch/csrc/distributed/c10d/TCPStore.cpp
+index 7de20bbcce5..ae8ce3e57cf 100644
+--- a/torch/csrc/distributed/c10d/TCPStore.cpp
++++ b/torch/csrc/distributed/c10d/TCPStore.cpp
+@@ -15,6 +15,8 @@
+ #include <thread>
+ #include <unordered_map>
+ #include <utility>
++#include <iostream>
++#include <unistd.h>
+ 
+ #ifdef _WIN32
+ #include <io.h>
+@@ -410,12 +412,14 @@ void TCPStore::_splitSet(
+ }
+ 
+ void TCPStore::set(const std::string& key, const std::vector<uint8_t>& data) {
++  std::cout << getpid() << " TCPStore::set key = " << key << std::endl;
+   detail::timing_guard tguard(clientCounters_["set"]);
+   const std::lock_guard<std::mutex> lock(activeOpLock_);
+   detail::SendBuffer buffer(*client_, detail::QueryType::SET);
+   buffer.appendString(keyPrefix_ + key);
+   buffer.appendBytes(data);
+   buffer.flush();
++  std::cout << getpid() << " TCPStore::set 6" << std::endl;
+ }
+ 
+ std::vector<uint8_t> TCPStore::compareSet(
+@@ -510,6 +514,7 @@ void TCPStore::wait(const std::vector<std::string>& keys) {
+ void TCPStore::wait(
+     const std::vector<std::string>& keys,
+     const std::chrono::milliseconds& timeout) {
++  std::cout << getpid() << " TCPStore wait: keys = " << keys << std::endl;
+   detail::timing_guard tguard(clientCounters_["wait"]);
+   const std::lock_guard<std::mutex> lock(activeOpLock_);
+   std::vector<std::string> prefixedKeys{};
+@@ -532,11 +537,12 @@ void TCPStore::doWait(
+     }
+     buffer.flush();
+   }
+-
++  
+   detail::WaitResponseType response;
+   if (client_->receiveValueWithTimeout<detail::WaitResponseType>(
+           response, timeout)) {
+     if (response != detail::WaitResponseType::STOP_WAITING) {
++      std::cout << "TCPStore doWait 9" << std::endl;
+       TORCH_CHECK(false, "Stop_waiting response is expected");
+     }
+     return;
+@@ -547,14 +553,13 @@ void TCPStore::doWait(
+     detail::SendBuffer buffer(*client_, detail::QueryType::CANCEL_WAIT);
+     buffer.flush();
+   }
+-
++  std::cout << "TCPStore doWait 11" << std::endl;
+   response = client_->receiveValue<detail::WaitResponseType>();
+   // this can happen if the server responds before we cancel, just ignore it
+   if (response != detail::WaitResponseType::WAIT_CANCELED) {
+     if (response != detail::WaitResponseType::STOP_WAITING) {
+       TORCH_CHECK(false, "Stop_waiting response is expected");
+     }
+-
+     response = client_->receiveValue<detail::WaitResponseType>(); // ignore
+     if (response != detail::WaitResponseType::WAIT_CANCELED) {
+       TORCH_CHECK(false, "wait_canceled response is expected");
 diff --git a/torch/distributed/__init__.py b/torch/distributed/__init__.py
 index 5fb05a34771..871f7a25526 100644
 --- a/torch/distributed/__init__.py
@@ -107,18 +179,36 @@ index 5fb05a34771..871f7a25526 100644
  
      from .rendezvous import (
 diff --git a/torch/distributed/distributed_c10d.py b/torch/distributed/distributed_c10d.py
-index db553f6bf4a..e172ea92ddf 100644
+index db553f6bf4a..e7769521faa 100644
 --- a/torch/distributed/distributed_c10d.py
 +++ b/torch/distributed/distributed_c10d.py
-@@ -1426,6 +1426,7 @@ def _new_process_group_helper(
+@@ -1257,6 +1257,7 @@ def init_process_group(
+ 
+             # Use a PrefixStore to avoid accidental overrides of keys used by
+             # different systems (e.g. RPC) in case the store is multi-tenant.
++            print(f"{os.getpid()} prefixstore default_pg")
+             store = PrefixStore("default_pg", store)
+ 
+         default_pg, _ = _new_process_group_helper(
+@@ -1425,7 +1426,9 @@ def _new_process_group_helper(
+                 split_from.perform_nocolor_split(_get_default_group().bound_device_id)
              return GroupMember.NON_GROUP_MEMBER, None
  
++    print(f"{os.getpid()} prefixstore group_name = {group_name}")
      prefix_store = PrefixStore(f"{group_name}/", store)
 +    
      base_pg_options = ProcessGroup.Options(backend=str(backend))
      base_pg_options._timeout = timeout
      pg: ProcessGroup = ProcessGroup(prefix_store, group_rank, group_size, base_pg_options)
-@@ -1456,6 +1457,7 @@ def _new_process_group_helper(
+@@ -1436,6 +1439,7 @@ def _new_process_group_helper(
+     for device, backend_str in backend_config.get_device_backend_map().items():
+         # Use the group name as prefix in the default store, such that
+         # a single store can be reused by multiple groups.
++        print(f"{os.getpid()} prefixstore device = {device}")
+         backend_prefix_store = PrefixStore(f"{device}/", prefix_store)
+ 
+         if backend_str == Backend.MPI:
+@@ -1456,6 +1460,7 @@ def _new_process_group_helper(
              # TODO: remove this check after lazy initialization is supported
              # if pg_options is not None:
              #     raise RuntimeError("GLOO options not supported")
@@ -126,9 +216,11 @@ index db553f6bf4a..e172ea92ddf 100644
              backend_class = ProcessGroupGloo(backend_prefix_store, group_rank, group_size, timeout=timeout)
              backend_type = ProcessGroup.BackendType.GLOO
          elif backend_str == Backend.NCCL:
-@@ -3714,6 +3716,7 @@ def _create_process_group_wrapper(
+@@ -3713,7 +3718,9 @@ def _create_process_group_wrapper(
+ 
      # Create a separate prefix store for the helper process group.
      prefix = f"{PG_WRAPPER_STORE_PREFIX}:{store_prefix}"
++    print(f">>> {os.getpid()} _create_process_group_wrapper: prefixstore = {prefix}")    
      store = PrefixStore(prefix, store)
 +    print(f">>> _create_process_group_wrapper: store = {store}")
      helper_pg = ProcessGroupGloo(store, rank, world_size, timeout=timeout)
