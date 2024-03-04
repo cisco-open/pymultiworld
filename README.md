@@ -1,1 +1,1 @@
-this code is tested under pytorch version: 2.3.0a0+gitc0e5cca
+Pytorch version: 2.3.0a0+gitc0e5cca
