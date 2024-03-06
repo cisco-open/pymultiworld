@@ -13,6 +13,7 @@ import torch.distributed as dist
 
 import atexit
 import copy
+import random
 
 
 def dummy(world_name, rank, size):
@@ -31,6 +32,8 @@ def run(world_name, rank, size):
 
         if world_name == "world2":
             tensor = torch.ones(1) * 2
+
+        time.sleep(random.randint(1, 2))
 
         dist.send(tensor, dst=rank_to_send)
         print(f"run function: world: {world_name}, my rank: {rank}, world size: {size}, tensor = {tensor}")
