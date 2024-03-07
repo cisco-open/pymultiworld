@@ -2,18 +2,17 @@
 #!/usr/bin/env python
 
 
+import atexit
+import copy
 import os
+import random
 import time
 from datetime import timedelta
 
-import torch.multiprocessing as mp
-
 import torch
 import torch.distributed as dist
-
-import atexit
-import copy
-import random
+import torch.multiprocessing as mp
+from multiworld.comm_manager import WorldCommunicationManager
 
 
 def dummy(world_name, rank, size):
@@ -36,7 +35,9 @@ def run(world_name, rank, size):
         time.sleep(random.randint(1, 2))
 
         dist.send(tensor, dst=rank_to_send)
-        print(f"run function: world: {world_name}, my rank: {rank}, world size: {size}, tensor = {tensor}")
+        print(
+            f"run function: world: {world_name}, my rank: {rank}, world size: {size}, tensor = {tensor}"
+        )
 
 
 def init_process(port, world_name, rank, size, fn, backend="gloo"):
@@ -48,7 +49,9 @@ def init_process(port, world_name, rank, size, fn, backend="gloo"):
         "127.0.0.1", int(port), 2, True if rank == 0 else False, timedelta(seconds=30)
     )
     print(f"tcp store: {store}")
-    dist.init_process_group(backend, rank=rank, world_size=size, store=store, group_name=world_name)
+    dist.init_process_group(
+        backend, rank=rank, world_size=size, store=store, group_name=world_name
+    )
     # dist.init_process_group(backend, rank=rank, world_size=size)
     print("init_process_group done")
     fn(world_name, rank, size)
@@ -71,7 +74,9 @@ def create_world(port, world_name, fn1, fn2):
 
     return processes
 
+
 processes = []
+
 
 def cleanup():
     print("Cleaning up spwaned processes")
@@ -87,10 +92,10 @@ def receive_data_continuous(world_communication_manager):
     while True:
         world2_tensor = torch.zeros(1)
         world_communication_manager.recv(world2_tensor, "world2", 1)
-        
+
         world1_tensor = torch.zeros(1)
         world_communication_manager.recv(world1_tensor, "world1", 1)
-        
+
         # Empty the queue until we reach and Exception using get_nowait
         try:
             while True:
@@ -106,17 +111,21 @@ if __name__ == "__main__":
     atexit.register(cleanup)
 
     world_manager = dist.WorldManager()
-    world_communication_manager = dist.WorldCommunicationManager(world_manager)
+    world_communication_manager = WorldCommunicationManager(world_manager)
     world_communication_manager.add_world("world1")
     world_communication_manager.add_world("world2")
 
     size = 2
     mp.set_start_method("spawn")
 
-    pset = create_world("29500", "world1", run, dummy, world_name="world1", world_manager=world_manager)
+    pset = create_world(
+        "29500", "world1", run, dummy, world_name="world1", world_manager=world_manager
+    )
     processes += pset
 
-    pset = create_world("30500", "world2", run, dummy, world_name="world2", world_manager=world_manager)
+    pset = create_world(
+        "30500", "world2", run, dummy, world_name="world2", world_manager=world_manager
+    )
     processes += pset
 
     print("here")

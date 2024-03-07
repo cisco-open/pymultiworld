@@ -1,0 +1,26 @@
+diff --git a/torch/distributed/__init__.py b/torch/distributed/__init__.py
+index 5c224e48fdd..18e73d0b542 100644
+--- a/torch/distributed/__init__.py
++++ b/torch/distributed/__init__.py
+@@ -107,6 +107,8 @@ if is_available():
+         _get_process_group_name,
+     )
+ 
++    from .world_manager import WorldManager, C10dWorld
++
+     from .rendezvous import (
+         rendezvous,
+         _create_store_from_options,
+diff --git a/torch/distributed/distributed_c10d.py b/torch/distributed/distributed_c10d.py
+index 27d7919598f..0d423263051 100644
+--- a/torch/distributed/distributed_c10d.py
++++ b/torch/distributed/distributed_c10d.py
+@@ -1155,7 +1155,7 @@ def init_process_group(
+     internals of c10d. This means we can ignore the value
+     they provide as it not exposed in a public way.
+     """
+-    group_name = _process_group_name([], use_hashed_name=False)
++    # group_name = _process_group_name([], use_hashed_name=False)
+     if backend == Backend.MPI:
+         if world_size != -1 or rank != -1:
+             warnings.warn(

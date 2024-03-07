@@ -10,15 +10,7 @@ fi
 target=$(pwd)
 
 pushd $pytorch_src_dir
-git diff > $target/pytorch.patch
-
-pushd third_party
-third_party_pkgs=(gloo)
-for pkg in ${third_party_pkgs[@]}; do
-    cd $pkg
-    git diff > $target/$pkg.patch
-    cd ..
-done
-popd
+version=$(git describe --tags)
+git diff > $target/pytorch-$version.patch
 
 popd
