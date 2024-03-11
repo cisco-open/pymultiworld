@@ -11,7 +11,6 @@ def main():
     args = parser.parse_args()
 
     patch_basename = os.path.basename(args.patchfile)
-    print(f"{args.patchfile}, {patch_basename}")
 
     path_to_sitepackages = site.getsitepackages()[0]
 
@@ -21,16 +20,14 @@ def main():
     os.chdir(path_to_sitepackages)
 
     os.system(f"patch < {patch_basename}")
-
-    src = os.path.join(path_to_sitepackages, "multiworld", "world_manager.py")
-    dst = os.path.join(
-        path_to_sitepackages,
-        "torch/distributed",
-        "world_manager.py",
-    )
-    shutil.copyfile(src, dst)
     p = pathlib.Path(patch_basename)
     p.unlink()
+
+    files_to_copy = ["world_manager.py", "world_communicator.py"]
+    for f in files_to_copy:
+        src = os.path.join(path_to_sitepackages, "multiworld", f)
+        dst = os.path.join(path_to_sitepackages, "torch/distributed", f)
+        shutil.copyfile(src, dst)
 
 
 if __name__ == "__main__":
