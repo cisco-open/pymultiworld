@@ -19,7 +19,7 @@ def main():
 
     os.chdir(path_to_sitepackages)
 
-    os.system(f"patch < {patch_basename}")
+    os.system(f"patch -p1 < {patch_basename}")
     p = pathlib.Path(patch_basename)
     p.unlink()
 

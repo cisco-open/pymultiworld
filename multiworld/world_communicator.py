@@ -64,21 +64,49 @@ class WorldCommunicator:
     def send(self, tensor, world_name, rank):
         """Send a tensor to a specific rank in a world."""
         self._world_manager.set_world(world_name)
-        request_obj = dist.isend(tensor, dst=rank)
+        
+        # Catch any errors due to worker failures
+        try:
+            request_obj = dist.isend(tensor, dst=rank)
 
-        self._communication_commands[world_name].put(
-            (CommunicationType.SEND, request_obj, tensor)
-        )
+            self._communication_commands[world_name].put(
+                (CommunicationType.SEND, request_obj, tensor)
+            )
 
-        return request_obj
+            return request_obj
+        except RuntimeError as e:
+            error_message = str(e)
+
+            if "Connection closed by peer" in error_message:
+                print("Ignoring Connection closed by peer error")
+            elif "Connection reset by peer" in error_message:
+                print("Ignoring Connection reset by peer error")
+            else:
+                raise e
+
+        return None
 
     def recv(self, tensor, world_name, rank):
         """Receive a tensor from a specific rank in a world."""
         self._world_manager.set_world(world_name)
-        request_obj = dist.irecv(tensor, src=rank)
+        
+        # Catch any errors due to worker failures
+        try:
+            request_obj = dist.irecv(tensor, src=rank)
 
-        self._communication_commands[world_name].put(
-            (CommunicationType.RECV, request_obj, tensor)
-        )
+            self._communication_commands[world_name].put(
+                (CommunicationType.RECV, request_obj, tensor)
+            )
 
-        return request_obj
+            return request_obj
+        except RuntimeError as e:
+            error_message = str(e)
+
+            if "Connection closed by peer" in error_message:
+                print("Ignoring Connection closed by peer error")
+            elif "Connection reset by peer" in error_message:
+                print("Ignoring Connection reset by peer error")
+            else:
+                raise e
+
+        return None
