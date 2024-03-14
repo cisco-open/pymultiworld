@@ -43,7 +43,7 @@ class WorldManager:
         """Initialize the distributed environment."""
         # os.environ["MASTER_ADDR"] = addr
         # os.environ["MASTER_PORT"] = port
-        print(f"({os.getpid()}) port = {port}")
+        print(f"({os.getpid()}) backend= {backend}, port = {port}")
         store = dist.TCPStore(
             addr,
             port,
