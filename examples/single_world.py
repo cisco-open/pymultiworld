@@ -11,8 +11,6 @@ import torch.multiprocessing as mp
 
 def run(backend, rank, size):
     """Distributed function to be implemented later."""
-    runtime_error_peer = -1
-
     if backend == "nccl":
         torch.cuda.set_device(f"cuda:{rank}")
 
@@ -102,7 +100,7 @@ if __name__ == "__main__":
 
     # https://github.com/pytorch/pytorch/blob/main/torch/csrc/distributed/c10d/ProcessGroupNCCL.hpp#L114-L126
     # "2" is CleanUpOnly
-    os.environ["NCCL_ASYNC_ERROR_HANDLING"] = "2"
+    os.environ["TORCH_NCCL_ASYNC_ERROR_HANDLING"] = "2"
     args = parser.parse_args()
 
     if not args.multihost:
