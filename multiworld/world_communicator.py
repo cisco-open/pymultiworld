@@ -88,6 +88,8 @@ class WorldCommunicator:
                 logger.warn("Ignoring Connection closed by peer error")
             elif "Connection reset by peer" in error_message:
                 logger.warn("Ignoring Connection reset by peer error")
+            elif "NCCL communicator was aborted" in error_message:
+                logger.warn("Ignoring NCCL communicator aborted error")
             else:
                 raise e
 
@@ -113,6 +115,8 @@ class WorldCommunicator:
                 logger.warn("Ignoring Connection closed by peer error")
             elif "Connection reset by peer" in error_message:
                 logger.warn("Ignoring Connection reset by peer error")
+            elif "NCCL communicator was aborted" in error_message:
+                logger.warn("Ignoring NCCL communicator aborted error")
             else:
                 raise e
 
