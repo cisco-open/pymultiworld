@@ -30,6 +30,7 @@ class WorldManager:
         # Map from world_name to C10dWorld
         self._worlds = {}
         self._communicator = WorldCommunicator(self)
+        self._current_world = ""
 
     def _init_process_group(
         self,
@@ -111,6 +112,9 @@ class WorldManager:
         if world_name not in self._worlds:
             raise ValueError(f"World {world_name} does not exist.")
 
+        if self._current_world == world_name:
+            return
+
         print(f"Setting world to {world_name}")
 
         c10dworld = self._worlds[world_name]
@@ -124,6 +128,8 @@ class WorldManager:
         dist_c10d._pg_backend_config = c10dworld.pg_backend_config
         dist_c10d._group_count = c10dworld.group_count
         dist_c10d._backend = c10dworld.backend
+
+        self._current_world = world_name
 
     @property
     def communicator(self):
