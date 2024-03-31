@@ -71,6 +71,11 @@ class WorldCommunicator:
 
         self._loop = asyncio.get_running_loop()
 
+    def __del__(self):
+        """Cleanup the class instance."""
+        for world_name in self._communication_threads:
+            self.remove_world(world_name)
+
     def add_world(self, world_name):
         """Add a new world to the world comm manager."""
         input_q = SimpleSyncQ()
@@ -81,6 +86,9 @@ class WorldCommunicator:
         self._communication_threads[world_name] = threading.Thread(
             target=self._communication_thread, args=(world_name,)
         )
+        # Set the thread to daemon to not block the main process while exiting, since there is
+        # no way to cleanly kill the threads
+        self._communication_threads[world_name].daemon = True
         self._communication_threads[world_name].start()
 
     def remove_world(self, world_name):
