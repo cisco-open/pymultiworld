@@ -156,15 +156,16 @@ class WorldCommunicator:
 
         while True:
             # This call blocks indefinitely until a command is received
-            comm_obj: CommObject = input_q.get()
+            works: list[Work] = input_q.get()
+            # comm_obj: CommObject = input_q.get()
 
-            status = self._handle_work(comm_obj.work)
+            status = WorkStatus.SUCCESS
+            for work in works:
+                status = self._handle_work(work)
+                if status != WorkStatus.SUCCESS:
+                    break
 
-            if comm_obj.command == CommunicationType.RECV_FIFO:
-                comm_obj.status = status
-                self._tensor_rx_q.put(comm_obj)
-            else:
-                _, _ = run_async(event_q.put(status), self._loop)
+            _, _ = run_async(event_q.put(status), self._loop)
 
             if status == WorkStatus.BROKEN:
                 logger.debug(f"world {world_name} is broken")
@@ -183,11 +184,16 @@ class WorldCommunicator:
             pass
         logger.debug(f"terminating comm. thread for {world_name}")
 
-    async def send(self, tensor: Tensor, world_name: str, rank: int) -> None:
-        """Send a tensor to a specific rank in a world."""
+    async def send(
+        self, tensors: Union[Tensor, list[Tensor]], world_name: str, rank: int
+    ) -> None:
+        """Send a tensor or a list of tensors to a specific rank in a world.
+
+        This method supports batched send.
+        """
         self._world_manager.set_world(world_name)
 
-        self._send(tensor, world_name, rank)
+        self._send(tensors, world_name, rank)
 
         event_q = self._communication_commands[world_name][1]
         status = await event_q.get()
@@ -195,23 +201,35 @@ class WorldCommunicator:
             self._world_manager.remove_world(world_name)
             raise BrokenWorldException(f"{world_name}")
 
-    def _send(self, tensor: Tensor, world_name: str, rank: int) -> None:
+    def _send(
+        self, tensors: Union[Tensor, list[Tensor]], world_name: str, rank: int
+    ) -> None:
         # Catch any errors due to worker failures
         try:
-            work = dist.isend(tensor, dst=rank)
+            if isinstance(tensors, Tensor):
+                tensors = list(tensors)
+
+            works = list()
+            for tensor in tensors:
+                work = dist.isend(tensor, dst=rank)
+                works.append(work)
 
             input_q = self._communication_commands[world_name][0]
-            comm_obj = CommObject(CommunicationType.SEND, work, None, None, None)
-            input_q.put(comm_obj)
+            input_q.put(works)
 
         except RuntimeError as e:
             self._handle_error(e, world_name)
 
-    async def recv(self, tensor: Tensor, world_name: str, rank: int) -> None:
-        """Receive a tensor from a specific rank in a world."""
+    async def recv(
+        self, tensors: Union[Tensor, list[Tensor]], world_name: str, rank: int
+    ) -> None:
+        """Receive tensor(s) from a specific rank in a world.
+
+        This method supports batched receive.
+        """
         self._world_manager.set_world(world_name)
 
-        self._recv(tensor, world_name, rank)
+        self._recv(tensors, world_name, rank)
 
         event_q = self._communication_commands[world_name][1]
         status = await event_q.get()
@@ -219,14 +237,19 @@ class WorldCommunicator:
             self._world_manager.remove_world(world_name)
             raise BrokenWorldException(f"{world_name}")
 
-    def _recv(self, tensor: Tensor, world_name: str, rank: int):
+    def _recv(self, tensors: Union[Tensor, list[Tensor]], world_name: str, rank: int):
         # Catch any errors due to worker failures
         try:
-            work = dist.irecv(tensor, src=rank)
+            if isinstance(tensors, Tensor):
+                tensors = list(tensors)
+
+            works = list()
+            for tensor in tensors:
+                work = dist.irecv(tensor, src=rank)
+                works.append(work)
 
             input_q = self._communication_commands[world_name][0]
-            comm_obj = CommObject(CommunicationType.RECV, work, None, None, None)
-            input_q.put(comm_obj)
+            input_q.put(works)
 
         except RuntimeError as e:
             self._handle_error(e, world_name)
