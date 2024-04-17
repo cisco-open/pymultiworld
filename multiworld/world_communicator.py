@@ -5,7 +5,6 @@ import asyncio
 import logging
 import threading
 from asyncio import Queue as AsyncQ
-from queue import Empty
 from queue import SimpleQueue as SimpleSyncQ
 from typing import TYPE_CHECKING, Union
 
@@ -48,32 +47,6 @@ class BrokenWorldException(Exception):
 class WorkStatus:  # noqa: D101
     SUCCESS = 0
     BROKEN = 1  # To indicate if the world is broken
-
-
-class CommunicationType:  # noqa: D101
-    SEND = 1
-    RECV = 2
-    RECV_FIFO = 3
-
-
-class CommObject:
-    """Internal communication ojbect."""
-
-    def __init__(
-        self,
-        command: CommunicationType,
-        work: Work,
-        tensor: Union[Tensor, None],
-        world_name: Union[str, None],
-        rank: Union[int, None],
-    ):
-        """Initialize an instance."""
-        self.command = command
-        self.work = work
-        self.tensor = tensor
-        self.world_name = world_name
-        self.rank = rank
-        self.status: WorkStatus = WorkStatus.SUCCESS
 
 
 class WorldCommunicator:
@@ -157,7 +130,6 @@ class WorldCommunicator:
         while True:
             # This call blocks indefinitely until a command is received
             works: list[Work] = input_q.get()
-            # comm_obj: CommObject = input_q.get()
 
             status = WorkStatus.SUCCESS
             for work in works:
@@ -253,53 +225,6 @@ class WorldCommunicator:
 
         except RuntimeError as e:
             self._handle_error(e, world_name)
-
-    async def recv_fifo(
-        self, tensor: Tensor, senders: list[tuple[str, int]]
-    ) -> tuple[Tensor, str, int]:
-        """Receive tensor from a list of senders in a fifo fashion.
-
-        This method will be deprecated.
-        """
-        fail_count = 0
-        for world_name, rank in senders:
-            buffer = tensor.detach().clone()
-
-            self._world_manager.set_world(world_name)
-
-            # Catch any errors due to worker failures
-            try:
-                work = dist.irecv(buffer, src=rank)
-
-                input_q = self._communication_commands[world_name][0]
-                comm_obj = CommObject(
-                    CommunicationType.RECV_FIFO, work, buffer, world_name, rank
-                )
-                input_q.put(comm_obj)
-
-            except RuntimeError as e:
-                self._handle_error(e, world_name)
-                fail_count += 1
-
-        count = len(senders)
-        while count > fail_count:
-            count -= 1
-            while True:
-                try:
-                    comm_obj: CommObject = self._tensor_rx_q.get(
-                        timeout=WAIT_TIME_FOR_FIFO
-                    )
-                    break
-                except Empty:
-                    # in case of timeout, yield control back to the event loop
-                    # so that the event loop can schedule some pending tasks
-                    await asyncio.sleep(0)
-                    continue
-
-            if comm_obj.status == WorkStatus.BROKEN:
-                raise BrokenWorldException(f"{comm_obj.world_name}")
-            else:
-                yield (comm_obj.tensor, comm_obj.world_name, comm_obj.rank)
 
     def _handle_error(self, error: RuntimeError, world_name: str):
         error_message = str(error)
