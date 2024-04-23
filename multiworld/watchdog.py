@@ -10,7 +10,7 @@ from asyncio import Queue as ASyncQ
 from queue import Empty
 from queue import Queue as SyncQ
 
-from torch.distributed import DistNetworkError
+from torch.distributed import DistNetworkError, DistStoreError
 
 from multiworld.threadsafe_async import run_async
 
@@ -149,6 +149,10 @@ class WatchDog:
                 try:
                     tick = int(store.get(f"watchdog/{world}/{rank}"))
                 except DistNetworkError as e:
+                    logger.debug(f"world {world} is broken during get: {e}")
+                    cleanup_entries.add(world)
+                    break
+                except DistStoreError as e:
                     logger.debug(f"world {world} is broken during get: {e}")
                     cleanup_entries.add(world)
                     break
