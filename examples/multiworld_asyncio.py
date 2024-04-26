@@ -1,4 +1,7 @@
-"""main.py."""
+"""
+multiworld_asyncio.py: This script is a modified version of examples/leader_recv.py.
+It demonstrates how to receive data from multiple worlds in a leader process using asyncio.
+"""
 #!/usr/bin/env python
 
 import argparse
@@ -11,13 +14,31 @@ import torch.distributed as dist
 
 
 def init_world(world_name, rank, size, backend="gloo", addr="127.0.0.1", port=-1):
-    """Initialize the distributed environment."""
+    """
+    Initialize the distributed environment.
+
+    Args:
+        world_name (str): Name of the world.
+        rank (int): Rank of the process.
+        size (int): Number of processes.
+        backend (str): Backend used for communication.
+        addr (str): Address to use for communication.
+        port (int): Port to use for communication.
+    """
     world_manager.initialize_world(
         world_name, rank, size, backend=backend, addr=addr, port=port
     )
 
 
 def _prepare_tensors(rank, backend, batch):
+    """
+    Prepare tensors for sending.
+
+    Args:
+        rank (int): Rank of the process.
+        backend (str): Backend used for communication.
+        batch (int): Number of tensors to send.
+    """
     tensors = list()
     for _ in range(batch):
         tensor = torch.ones(1)
@@ -28,6 +49,16 @@ def _prepare_tensors(rank, backend, batch):
 
 
 async def send_data(world_name, rank, size, backend, batch):
+    """
+    Async function to send tensors from the leader process to the other process.
+
+    Args:
+        world_name (str): Name of the world.
+        rank (int): Rank of the process.
+        size (int): Number of processes.
+        backend (str): Backend used for communication.
+        batch (int): Number of tensors to send.
+    """
     world_communicator = world_manager.communicator
 
     while True:
@@ -55,6 +86,14 @@ world_manager = None
 
 
 async def receive_data(world_communicator, backend, batch):
+    """
+    Async function to receive data from multiple worlds in a leader process.
+
+    Args:
+        world_communicator: World communicator
+        backend: Backend to use for distributed communication
+        batch: Number of tensors to receive
+    """
     worlds = {"world1", "world2"}
 
     while len(worlds):
@@ -73,6 +112,12 @@ async def receive_data(world_communicator, backend, batch):
 
 
 async def main(args):
+    """
+    Main function to run the script.
+
+    Args:
+        args: Command line arguments.
+    """
     size = 2
     global world_manager
 

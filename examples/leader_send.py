@@ -1,4 +1,6 @@
-"""main.py."""
+"""
+leader_send.py: This example demonstrates how to send data from a leader process to a worker process in a distributed setup.
+"""
 #!/usr/bin/env python
 
 
@@ -16,13 +18,27 @@ import copy
 
 
 def dummy(world_name, rank, size):
-    """Run this only once."""
+    """
+    Dummy function to be implemented later. Arguments are similar to run function.
+
+    Args:
+        world_name (str): Name of the world.
+        rank (int): Rank of the process.
+        size (int): Number of processes.
+    """
 
     print(f"dummy function: world: {world_name}, my rank: {rank}, world size: {size}")
 
 
 def run(world_name, rank, size):
-    """Distributed function to be implemented later."""
+    """
+    Distributed function to be implemented later.
+
+    Args:
+        world_name (str): Name of the world.
+        rank (int): Rank of the process.
+        size (int): Number of processes.
+    """
     while True:
         # Data exchange
         print(f"run function: world: {world_name}, my rank: {rank}, world size: {size}")
@@ -34,7 +50,17 @@ def run(world_name, rank, size):
 
 
 def init_process(port, world_name, rank, size, fn, backend="gloo"):
-    """Initialize the distributed environment."""
+    """
+    Initialize the distributed environment.
+    
+    Args:
+        port (str): Port number.
+        world_name (str): Name of the world.
+        rank (int): Rank of the process.
+        size (int): Number of processes.
+        fn (function): Function to be executed.
+        backend (str): Backend to be used.
+    """
     os.environ["MASTER_ADDR"] = "127.0.0.1"
     os.environ["MASTER_PORT"] = port
     print(f"{os.getpid()} port = {port}")
@@ -50,6 +76,18 @@ def init_process(port, world_name, rank, size, fn, backend="gloo"):
 
 @dist.WorldManager.world_initializer
 def create_world(port, world_name, fn1, fn2):
+    """
+    Create a world with the given port and world name.
+
+    Args:
+        port (str): Port number.
+        world_name (str): Name of the world.
+        fn1 (function): Function to be executed.
+        fn2 (function): Function to be executed.
+
+    Returns:
+        list: List of processes.
+    """
     size = 2
     processes = []
     for rank in range(size):
@@ -60,7 +98,7 @@ def create_world(port, world_name, fn1, fn2):
         print(p.pid)
         processes.append(p)
 
-    # run master late
+    # run leader late
     init_process(port, world_name, 0, size, fn2)
 
     return processes
@@ -68,6 +106,7 @@ def create_world(port, world_name, fn1, fn2):
 processes = []
 
 def cleanup():
+    """Cleanup function to terminate all spawned processes."""
     print("Cleaning up spwaned processes")
     for p in processes:
         p.terminate()
@@ -76,14 +115,20 @@ def cleanup():
 
 
 def send_data(tensor):
+    """
+    Send data from leader to a worker process and ignore connection errors.
+
+    Args:
+        tensor (torch.Tensor): Data to be sent.
+    """
     try:
-        print("send_data function: sending data from master")
+        print("send_data function: sending data from leader")
 
         rank_to_send = 1
         # tensor = torch.ones(1)
         dist.send(tensor, dst=rank_to_send)
 
-        print(f"send_data function: data sent from master, tensor = {tensor}")
+        print(f"send_data function: data sent from leader, tensor = {tensor}")
     except RuntimeError as e:
         error_message = str(e)
 
@@ -96,6 +141,12 @@ def send_data(tensor):
 
 
 def send_data_continuous(world_manager):
+    """
+    Send data from leader to a worker process continuously.
+
+    Args:
+        world_manager (dist.WorldManager): World manager object.
+    """
     bit = 0
 
     while True:
@@ -132,7 +183,7 @@ if __name__ == "__main__":
 
     print("here")
 
-    # send data from master to world2
+    # send data from leader to world2
     send_data_continuous(world_manager)
 
     for p in processes:

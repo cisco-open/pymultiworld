@@ -1,4 +1,7 @@
-"""run.py:"""
+"""
+single_world.py: Example that utilizes the native PyTorch distributed package to send tensors between processes.
+All processes belong to the same world.
+"""
 #!/usr/bin/env python
 import argparse
 import os
@@ -10,7 +13,14 @@ import torch.multiprocessing as mp
 
 
 def run(backend, rank, size):
-    """Distributed function to be implemented later."""
+    """
+    Function to send tensors from the leader process to the other process.
+
+    Args:
+        backend (str): Backend used for communication.
+        rank (int): Rank of the process.
+        size (int): Number of processes.
+    """
     if backend == "nccl":
         torch.cuda.set_device(f"cuda:{rank}")
 
@@ -60,7 +70,16 @@ def run(backend, rank, size):
 
 
 def init_process(rank, size, fn, addr="127.0.0.1", backend="gloo"):
-    """Initialize the distributed environment."""
+    """
+    Initialize the distributed environment.
+    
+    Args:
+        rank (int): Rank of the process.
+        size (int): Number of processes.
+        fn (function): Function to be executed.
+        addr (str): Address of the leader process.
+        backend (str): Backend used for communication.
+    """
     os.environ["MASTER_ADDR"] = addr
     os.environ["MASTER_PORT"] = "29500"
     dist.init_process_group(backend, rank=rank, world_size=size)
@@ -68,6 +87,12 @@ def init_process(rank, size, fn, addr="127.0.0.1", backend="gloo"):
 
 
 def single_host(args):
+    """
+    Initialize the distributed environment for a single host.
+
+    Args:
+        args (argparse.Namespace): Command line arguments.
+    """
     size = int(args.worldsize)
     processes = []
     mp.set_start_method("spawn")
@@ -85,6 +110,12 @@ def single_host(args):
 
 
 def multi_host(args):
+    """
+    Initialize the distributed environment for multiple hosts.
+
+    Args:
+        args (argparse.Namespace): Command line arguments.
+    """
     init_process(int(args.rank), int(args.worldsize), run, args.addr, args.backend)
 
 
@@ -100,7 +131,7 @@ if __name__ == "__main__":
 
     # https://github.com/pytorch/pytorch/blob/main/torch/csrc/distributed/c10d/ProcessGroupNCCL.hpp#L114-L126
     # "2" is CleanUpOnly
-    os.environ["TORCH_NCCL_ASYNC_ERROR_HANDLING"] = "2"
+    # os.environ["TORCH_NCCL_ASYNC_ERROR_HANDLING"] = "2"
     args = parser.parse_args()
 
     if not args.multihost:

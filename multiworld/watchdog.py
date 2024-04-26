@@ -1,4 +1,6 @@
-"""WatchDog class."""
+"""
+Class to closely monitor the status of the worlds and clean up the broken worlds.
+"""
 
 import asyncio
 import logging

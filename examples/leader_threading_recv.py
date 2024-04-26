@@ -1,4 +1,7 @@
-"""main.py."""
+"""
+leader_threading_recv.py: This script is a modified version of examples/leader_recv.py.
+It demonstrates how to receive data from multiple worlds in a leader process using threading.
+"""
 #!/usr/bin/env python
 
 
@@ -13,13 +16,29 @@ import torch.multiprocessing as mp
 
 
 def dummy(world_name, rank, size, backend):
-    """Run this only once."""
+    """
+    Dummy function to be implemented later.
+
+    Args:
+        world_name (str): Name of the world.
+        rank (int): Rank of the process.
+        size (int): Number of processes.
+        backend (str): Backend used for communication.
+    """
 
     print(f"dummy function: world: {world_name}, my rank: {rank}, world size: {size}")
 
 
 def run(world_name, rank, size, backend):
-    """Distributed function to be implemented later."""
+    """
+    Function to send tensors from the leader process to the other process.
+
+    Args:
+        world_name (str): Name of the world.
+        rank (int): Rank of the process.
+        size (int): Number of processes.
+        backend (str): Backend used for communication.
+    """
     while True:
         # Data exchange
         print(f"run function: world: {world_name}, my rank: {rank}, world size: {size}")
@@ -43,7 +62,18 @@ world_manager = None
 
 
 def init_world(world_name, rank, size, fn, backend="gloo", addr="127.0.0.1", port=-1):
-    """Initialize the distributed environment."""
+    """
+    Initialize the distributed environment.
+
+    Args:
+        world_name (str): Name of the world.
+        rank (int): Rank of the process.
+        size (int): Number of processes.
+        fn (function): Function to be executed.
+        backend (str): Backend to be used.
+        addr (str): Address of the leader process.
+        port (int): Port number.
+    """
     global world_manager
 
     if world_manager is None:
@@ -59,6 +89,20 @@ def init_world(world_name, rank, size, fn, backend="gloo", addr="127.0.0.1", por
 
 # @dist.WorldManager.world_initializer
 def create_world(world_name, addr, port, backend, fn1, fn2):
+    """
+    Create a world with the given port and world name.
+
+    Args:
+        world_name (str): Name of the world.
+        addr (str): Address of the leader process.
+        port (int): Port number.
+        backend (str): Backend to be used.
+        fn1 (function): Function to be executed in the world.
+        fn2 (function): Function to be executed in the world leader.
+
+    Returns:
+        list: List of processes.
+    """
     size = 2
     processes = []
     for rank in range(size):
@@ -71,7 +115,7 @@ def create_world(world_name, addr, port, backend, fn1, fn2):
         print(p.pid)
         processes.append(p)
 
-    # run master late
+    # run leader late
     init_world(world_name, 0, size, fn2, backend, addr, port)
 
     return processes
@@ -81,6 +125,7 @@ processes = []
 
 
 def cleanup():
+    """Cleanup function to terminate all spawned processes."""
     print("Cleaning up spwaned processes")
     for p in processes:
         p.terminate()
@@ -89,6 +134,13 @@ def cleanup():
 
 
 def receive_data_continuous(world_communicator, backend):
+    """
+    Receive data continuously in the leader process from the other processes.
+
+    Args:
+        world_communicator (dist.Communicator): Communicator object.
+        backend (str): Backend used for communication.
+    """
     bit = 0
 
     while True:
@@ -119,6 +171,12 @@ def receive_data_continuous(world_communicator, backend):
 
 
 def single_host(args):
+    """
+    Run the processes on a single host.
+
+    Args:
+        args (argparse.Namespace): Command line arguments.
+    """
     processes = []
     mp.set_start_method("spawn")
 
@@ -135,6 +193,12 @@ def single_host(args):
 
 
 def multi_host(args):
+    """
+    Run the processes on multiple hosts.
+
+    Args:
+        args (argparse.Namespace): Command line arguments.
+    """
     size = 2
     if args.rank == 0:
         init_world("world1", args.rank, size, dummy, args.backend, args.addr, 29500)
