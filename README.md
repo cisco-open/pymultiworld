@@ -54,24 +54,22 @@ The version (v2.2.1) must match the installed pytorch version.
 
 ## Running Examples
 * [`multiworld_asyncio.py`](/examples/multiworld_asyncio.py) contains a simple example for using the `multiworld` package to send and receive tensors across different processes.
-The example follows a similar logic to `single_world.py`, where a leader process is a part of multiple worlds and receives from the worker processes.
+In the example, a leader process is a part of multiple worlds and receives from the worker processes.
 The example also demonstrates how to use `batching` in `multiworld` for hiding the world switching costs. Script can be run using the following commands.
 
-For running all processes on the same host, run the command:
+This example is required to run workers (0, 1, and 2) in a separate terminal window.
+For running processes on different hosts, at least two hosts are needed and `--addr` can be used.
+For example, run the following commands, by changing the IP address (10.20.1.50) correctly in your setting:
 ```bash
-python multiworld_asyncio.py --backend nccl
+# on terminal window 1
+python multiworld_asyncio.py --backend nccl --rank 0 --addr 10.20.1.50
+# on terminal window 2
+python multiworld_asyncio.py --backend nccl --rank 1 --addr 10.20.1.50
+# on terminal window 3
+python multiworld_asyncio.py --backend nccl --rank 2 --addr 10.20.1.50
 ```
-
-For running processes on different hosts, at least two hosts are needed.
-For example, run the following commands for a two host setting:
-```bash
-# on host 1
-python multiworld_asyncio.py --multihost --backend nccl --addr 10.20.1.50 --rank 0
-# on host 2
-python multiworld_asyncio.py --multihost --backend nccl --addr 10.20.1.50 --rank 1
-# on host 2
-python multiworld_asyncio.py --multihost --backend nccl --addr 10.20.1.50 --rank 2
-```
+Note that currently `MultiWorld` supports fault tolerance at a node level, meaning that it can detect and recover faults that are occuring across machines.
+So, we recommend to run the above example with at least two machines (e.g., rank 0 in one machine  and ranks 1 and 2 in the other machine).
 
 * [`single_world.py`](/examples/single_world.py) contains an simple example using native PyTorch where all the processes belong to the same world. Script can be run using the following commands.
 
