@@ -1,7 +1,7 @@
-# MultiWorld
+# MultiWorld Framework for PyTorch
 
 ## About
-This repository implements `MultiWorld` framework. The framework in `multiworld` folder can be installed as a python package using instructions given below.
+This repository implements `MultiWorld` framework for PyTorch. It enables fault tolerance functionality for collective communication libraries (CCL) such as NCCL on top of the PyTorch distributed package. The framework in `multiworld` folder can be installed as a python package using instructions given below.
 
 ## Project Summary
 <p align="center"><img src="docs/imgs/single_vs_multi_world.png" alt="Single World vs. Multi World" width="500" height="200"></p>
