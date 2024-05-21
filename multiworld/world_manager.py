@@ -56,7 +56,7 @@ class WorldManager:
         """Initialize a world manager."""
         # Map from world_name to C10dWorld
         self._worlds = dict()
-        self._worlds_stores: dict[dist.TCPStore] = dict()
+        self._worlds_stores: dict[str, dist.TCPStore] = dict()
         self._communicator = WorldCommunicator(self)
         self._current_world = ""
 
