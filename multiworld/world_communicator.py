@@ -112,9 +112,9 @@ class WorldCommunicator:
         # Catch any errors due to worker failures
         try:
             if isinstance(tensors, Tensor):
-                tensors = list(tensors)
+                tensors = [tensors]
 
-            works = list()
+            works = []
             for tensor in tensors:
                 work = dist.isend(tensor, dst=rank)
                 works.append(work)
@@ -148,9 +148,9 @@ class WorldCommunicator:
         # Catch any errors due to worker failures
         try:
             if isinstance(tensors, Tensor):
-                tensors = list(tensors)
+                tensors = [tensors]
 
-            works = list()
+            works = []
             for tensor in tensors:
                 work = dist.irecv(tensor, src=rank)
                 works.append(work)

@@ -52,7 +52,7 @@ class C10dWorld:
 class WorldManager:
     """WorldManager class."""
 
-    def __init__(self):
+    def __init__(self, enable_monitor=True):
         """Initialize a world manager."""
         # Map from world_name to C10dWorld
         self._worlds = dict()
@@ -63,9 +63,10 @@ class WorldManager:
         self._event_q = SyncQ()
         self._action_q = ASyncQ()
 
-        self._watchdog = WatchDog(self._event_q, self._action_q)
+        if enable_monitor:
+            self._watchdog = WatchDog(self._event_q, self._action_q)
 
-        _ = asyncio.create_task(self._cleanup_worlds())
+            _ = asyncio.create_task(self._cleanup_worlds())
 
     def cleanup(self):
         """Call exit(0) explicitly."""
