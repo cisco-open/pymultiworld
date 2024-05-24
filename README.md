@@ -99,6 +99,13 @@ To view the documentation for `multiworld/world_manager.py` run the command
 ```bash
 pydoc multiworld/world_manager.py
 ```
+
+## Contributors
+
+<a href="https://github.com/cisco-open/pymultiworld/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=cisco-open/pymultiworld" />
+</a>
+
 ## How to Contribute
 If you wish to contribute or suggest any additional funtionalities, please check out [Contributing Guidelines](/CONTRIBUTING.md)
 
