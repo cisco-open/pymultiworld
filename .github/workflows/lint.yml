@@ -1,0 +1,24 @@
+name: lint
+
+on:
+  push:
+    branches:
+      # Run on pushes to default branch
+      - main
+  # Run against pull requests
+  pull_request:
+
+jobs:
+  markdown:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 🔒 harden runner
+        uses: step-security/harden-runner@a4aa98b93cab29d9b1101a6143fb8bce00e2eac4 # v2.7.1
+        with:
+          egress-policy: audit
+      - uses: actions/checkout@a5ac7e51b41094c92402da3b24376905380afc29 # v4.1.6
+      - name: ⬇️ lint markdown files
+        uses: avto-dev/markdown-lint@04d43ee9191307b50935a753da3b775ab695eceb # v1.5.0
+        with:
+          config: ".markdownlint.json"
+          args: "**/*.md .github/**/*.md"
