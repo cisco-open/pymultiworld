@@ -173,7 +173,10 @@ class WorldManager:
         logger.debug(f"destory process group for {world_name}")
         self.set_world(world_name)
         del self._worlds[world_name]
-        dist.destroy_process_group()
+        # FIXME: calling destroy_process_group() here causes program hang.
+        #        we need to find out a right timing/way to call this function.
+        #        calling this function is temporarily disabled.
+        # dist.destroy_process_group()
         logger.debug(f"done removing world {world_name}")
 
     def set_world(self, world_name):
