@@ -86,7 +86,9 @@ python multiworld_asyncio.py --backend nccl --rank 2 --addr 10.20.1.50
 Here the IP address is the IP address of rank 0. We assume that at least 3 GPUs are available either in a single host or across hosts.
 If the scripts are executed in a single host, `--addr` can be omitted.
 
-`MultiWorld` supports fault management functionality at a worker level, meaning that it can detect, tolerate and recover faults that are occuring at a worker in a host.
+While running the above example, one can terminate a worker (e.g., rank 2) and the leader (rank 0) continues to receive tensors from the remaining worker.
+
+`MultiWorld` facilitates fault management functionality at a worker level, meaning that it can detect, tolerate and recover faults that are occuring at a worker in a host.
 So, one can run the above example in a single host or across hosts. For the cross-host execution, the IP address must be the IP address of rank 0.
 
 * [`single_world.py`](/examples/single_world.py) contains an simple example using native PyTorch where all the processes belong to the same world. Script can be run using the following commands.
@@ -108,6 +110,11 @@ python single_world.py --backend nccl --addr 10.20.1.50 --multihost --worldsize 
 # on host 2
 python single_world.py --backend nccl --addr 10.20.1.50 --multihost --worldsize 3 --rank 2
 ```
+
+In this example, terminating one worker (e.g., rank 2) will terminate all the workers in the process group.
+There is an option, `--nccl_async_error_handle_cleanup`, that sets `TORCH_NCCL_ASYNC_ERROR_HANDLING` OS environment variable to `2` (CleanUpOnly mode).
+Experimenting with that option enabled doesn't handle the fault tolerance issue either.
+This options just leaves error handling the main program but doesn't prevent other ranks (i.e., 0 and 1) from aborting NCCL's communicator.
 
 ## Generating Documentation
 
