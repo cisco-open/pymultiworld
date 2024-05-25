@@ -69,12 +69,13 @@ class WorldManager:
             _ = asyncio.create_task(self._cleanup_worlds())
 
     def cleanup(self):
-        """Call exit(0) explicitly."""
+        """Call os._exit(0) explicitly."""
         # TODO: This is a temporary workaround to prevent main thread hang
-        #       even after it's done. Calling exit(0) guarantees termination
-        #       of the process. We need to figure out why sometimes it's not
-        #       terminated without explicit call of exit().
-        exit(0)
+        #       even after it's done. Calling os._exit(0) guarantees
+        #       terminationof the process. We need to figure out why
+        #       sometimes it's not terminated without explicit call of
+        #       os._exit(0).
+        os._exit(0)
 
     async def _cleanup_worlds(self):
         logger.debug("starting _cleanup_worlds task")
