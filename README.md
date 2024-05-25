@@ -2,7 +2,7 @@
 
 ## About
 
-This repository implements `MultiWorld` framework for PyTorch. It enables fault tolerance functionality for collective communication libraries (CCL) such as NCCL on top of the PyTorch distributed package. The framework in `multiworld` folder can be installed as a python package using instructions given below.
+This repository implements `MultiWorld` framework for PyTorch. It enables fault management functionality for collective communication libraries (CCL) such as NCCL on top of the PyTorch distributed package. The fault management functionality includes (i) detection, (ii) tolerance (or resilience) and (iii) recovery. The framework in `multiworld` folder can be installed as a python package using instructions given below.
 
 ## Project Summary
 
@@ -10,22 +10,21 @@ This repository implements `MultiWorld` framework for PyTorch. It enables fault 
 
 ### Background and Motivation
 
-In the world of machine learning (ML) and artificial intelligence (AI), it's crucial for models to be reliable and strong. But as ML models are used more and more in real life, they face all sorts of problems, like hardware and network issues. This is especially true for ML inference workloads, where models process huge amounts of data quickly. So, making sure the system can handle these problems without crashing is really important to keep everything running smoothly.
+In the world of machine learning (ML) and artificial intelligence (AI), it's crucial for models to be reliable. But as ML models are used more and more in real life, they face all sorts of problems such as hardware and network failures. Since ML inference is a long-running service, it is crucial that ML inference workloads handle these problems fast and gracefully. Especially, as models become larger, it becomes unavoidable to deploy them across GPUs and hosts, which renders fault management challenging.
 
-Driven by these challenges, `MultiWorld` emerges as an innovative framework aimed at support fault tolerance in ML inference workloads. Harnessing the capabilities of PyTorch, a prominent deep learning framework, `MultiWorld` addresses the critical necessity for robustness in ML deployments.
+`MultiWorld` is an innovative framework aimed at supporting fault management in ML inference workloads. Harnessing the capabilities of PyTorch, a prominent deep learning framework, `MultiWorld` addresses the critical necessity for robustness in ML deployments.
 
 ### Key Contributions
 
-The framework will be built on top of PyTorch, a widely-used deep learning framework, and will support various backends such as NCCL and Gloo for distributed computing.
+The framework is built on top of PyTorch, a widely-used deep learning framework, and will support various backends such as NCCL and Gloo for distributed computing.
 
-`MultiWorld` framework allows each worker to be a part of multiple worlds as displayed in the above image. Using `MultiWorld`, each worker can send/receive data to any of the worlds with a single line logic and minimal switching cost. `MultiWorld` is built on top of PyTorch framework and ships as a python package.
+`MultiWorld` framework allows each worker to be a part of multiple worlds as displayed in the above figure. Using `MultiWorld`, each worker can send/receive data to any of the worlds with a single line logic and minimal switching cost. `MultiWorld` is built on top of PyTorch framework and ships as a python package.
 
-`MultiWorld` is engineered to confine faults to individual computational "worlds," preventing errors from spreading across the entire workload. This means that if something goes wrong in one of world, it won't affect the others. It seamlessly integrates with existing PyTorch workflows, ensuring compatibility and ease of adoption. Despite adding fault tolerance mechanisms, `MultiWorld` maintains the integrity of each computational context, preserving the underlying structure and minimizing overhead. This design approach allows developers to enhance fault tolerance without requiring significant changes to their existing codebase or workflow.
+`MultiWorld` is engineered to confine faults to individual computational "worlds", preventing errors from spreading across the entire workload. This means that if something goes wrong in one worker, the worlds where the worker belongs will be only affected, but it won't affect the others. Despite adding fault management mechanisms, `MultiWorld` maintains the integrity of each computational context, preserving the underlying structure and minimizing overhead. This approach allows developers to enhance fault management without requiring significant changes to their existing codebase or workflow. In many cases, the developers only need to replace PyTorch's  send/recv with the counter part of `MultiWorld` (send/recv under WorldCommunicator's module).
 
 ## Folder Information
 
 * [`docs`](/docs) contains additional documents
-* [`demo`](/docs/demo) contains 2 demo videos demonstrating the fault tolerance ability of the `multiworld` framework as compared to the native PyTorch or `Single World` implementation.
 * [`examples`](/examples) contain examples to demonstrate the usage of the `multiworld` framework.
 * [`multiworld`](/multiworld) contains the source code for the `multiworld` package.
 * [`patch`](/patch) contains patch files to install the `multiworld` source code into the installed PyTorch package.
@@ -68,11 +67,12 @@ The version (v2.2.1) must match the installed pytorch version.
 
 * [`multiworld_asyncio.py`](/examples/multiworld_asyncio.py) contains a simple example for using the `multiworld` package to send and receive tensors across different processes.
 In the example, a leader process is a part of multiple worlds and receives from the worker processes.
-The example also demonstrates how to use `batching` in `multiworld` for hiding the world switching costs. Script can be run using the following commands.
+Script can be run using the following commands.
 
 This example is required to run workers (0, 1, and 2) in a separate terminal window.
-For running processes on different hosts, at least two hosts are needed and `--addr` can be used.
-For example, run the following commands, by changing the IP address (10.20.1.50) correctly in your setting:
+The script can be executed in a single host or across hosts.
+To run processes on different hosts, `--addr` arugment  can be used.
+For example, run the following commands, by changing the IP address (10.20.1.50) correctly in your setting.
 
 ```bash
 # on terminal window 1
@@ -83,8 +83,11 @@ python multiworld_asyncio.py --backend nccl --rank 1 --addr 10.20.1.50
 python multiworld_asyncio.py --backend nccl --rank 2 --addr 10.20.1.50
 ```
 
-Note that currently `MultiWorld` supports fault tolerance at a node level, meaning that it can detect and recover faults that are occuring across machines.
-So, we recommend to run the above example with at least two machines (e.g., rank 0 in one machine  and ranks 1 and 2 in the other machine).
+Here the IP address is the IP address of rank 0. We assume that at least 3 GPUs are available either in a single host or across hosts.
+If the scripts are executed in a single host, `--addr` can be omitted.
+
+`MultiWorld` supports fault management functionality at a worker level, meaning that it can detect, tolerate and recover faults that are occuring at a worker in a host.
+So, one can run the above example in a single host or across hosts. For the cross-host execution, the IP address must be the IP address of rank 0.
 
 * [`single_world.py`](/examples/single_world.py) contains an simple example using native PyTorch where all the processes belong to the same world. Script can be run using the following commands.
 
