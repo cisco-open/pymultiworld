@@ -88,7 +88,7 @@ def run(backend, rank, size):
 def init_process(rank, size, fn, addr="127.0.0.1", backend="gloo"):
     """
     Initialize the distributed environment.
-    
+
     Args:
         rank (int): Rank of the process.
         size (int): Number of processes.
@@ -144,11 +144,18 @@ if __name__ == "__main__":
     parser.add_argument(
         "--multihost", action=argparse.BooleanOptionalAction, default=False
     )
+    parser.add_argument(
+        "--nccl_async_error_handle_cleanup",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+    )
+
+    args = parser.parse_args()
 
     # https://github.com/pytorch/pytorch/blob/main/torch/csrc/distributed/c10d/ProcessGroupNCCL.hpp#L114-L126
     # "2" is CleanUpOnly
-    # os.environ["TORCH_NCCL_ASYNC_ERROR_HANDLING"] = "2"
-    args = parser.parse_args()
+    if args.nccl_async_error_handle_cleanup:
+        os.environ["TORCH_NCCL_ASYNC_ERROR_HANDLING"] = "2"
 
     if not args.multihost:
         single_host(args)
