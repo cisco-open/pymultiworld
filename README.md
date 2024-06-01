@@ -44,10 +44,21 @@ The framework is built on top of PyTorch, a widely-used deep learning framework,
 
 * Install [anaconda](www.anaconda.com/download/) or [miniconda](https://docs.conda.io/en/latest/miniconda.html) in order to create the environment.
 * Clone repo (you could use `git clone https://github.com/cisco-open/pymultiworld.git`).
+* This prerequiste is only for testing a fault tolerance functionality across hosts.
+  * To test the functionality **in a single machine**, this step can be skipped. Do the remaining installation steps from [here](#installation).
+  * Too run the test **across hosts**, a custom-built PyTorch is necessary. Follow instructions in this [doc](docs/pytorch_build.md). Details on why to build a custom PyTorch are found in the doc too.
 
 ## Installation
 
 ### Step 1: Install multiworld package
+
+To use the latest official package,
+
+```bash
+pip install multiworld
+```
+
+To install the package from source,
 
 ```bash
 pip install .
@@ -138,7 +149,7 @@ pydoc multiworld/world_manager.py
 ## Contributors
 
 <a href="https://github.com/cisco-open/pymultiworld/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=cisco-open/pymultiworld" />
+  <img src="https://contrib.rocks/image?repo=cisco-open/pymultiworld" alt="contributors" />
 </a>
 
 ## How to Contribute
