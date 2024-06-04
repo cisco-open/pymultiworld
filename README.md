@@ -40,6 +40,11 @@ The framework is built on top of PyTorch, a widely-used deep learning framework,
 
 * [PyTorch](https://pytorch.org/get-started/previous-versions/#v221) version: `2.2.1`
 
+## Prerequisites
+
+* Install [anaconda](www.anaconda.com/download/) or [miniconda](https://docs.conda.io/en/latest/miniconda.html) in order to create the environment.
+* Clone repo (you could use `git clone https://github.com/cisco-open/pymultiworld.git`).
+
 ## Installation
 
 ### Step 1: Install multiworld package
@@ -51,7 +56,7 @@ pip install .
 ### Step 2: Run post installation script with patch file
 
 ```bash
-m8d-post-setup <path_to_site_packages>
+m8d-post-setup <path_to_patch_file>
 ```
 
 Patch files exist under `patch` folder.
