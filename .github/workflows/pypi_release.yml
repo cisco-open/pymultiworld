@@ -1,0 +1,32 @@
+name: Publish to PyPi
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out the code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+
+      - name: Install build dependencies
+        run: pip install build
+
+      - name: Build the package
+        run: python -m build
+
+      - name: Publish to PyPI
+        env:
+          TWINE_API_KEY: ${{ secrets.PYPI_API_KEY }}
+        run: |
+          pip install twine
+          twine upload --skip-existing dist/*
+
