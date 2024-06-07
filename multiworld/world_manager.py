@@ -15,10 +15,6 @@
 # SPDX-License-Identifier: Apache-2.0
 
 """Class to create and manage multiple worlds."""
-# NOTE: This is a hack to get around the fact that the torch.distributed package
-#       is not designed to support multiple worlds. This is a stop-gap solution
-#       until the torch.distributed package is updated to support multiple worlds.
-
 import asyncio
 import logging
 import os
