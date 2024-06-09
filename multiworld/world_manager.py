@@ -31,27 +31,11 @@ from multiworld.watchdog import WatchDog
 logger = logging.Logger(__name__)
 
 
-class C10dWorld:
-    """Class to keep the global variables of distributed c10d."""
-
-    def __init__(self, world):
-        """Initialize an instance."""
-        self.world = world
-        self.pg_map = {}
-        self.pg_names = {}
-        self.pg_group_ranks = {}
-        self.pg_backend_config = {}
-        self.group_count = 0
-        self.backend = "undefined"
-
-
 class WorldManager:
     """WorldManager class."""
 
     def __init__(self, enable_monitor=True):
         """Initialize a world manager."""
-        # Map from world_name to C10dWorld
-        self._worlds = dict()
         self._worlds_stores: dict[str, dist.TCPStore] = dict()
         self._communicator = WorldCommunicator(self)
         self._current_world = ""
@@ -110,7 +94,7 @@ class WorldManager:
             rank=rank,
             world_size=world_size,
             store=store,
-            group_name=world_name,
+            world_name=world_name,
         )
 
         self._worlds_stores[world_name] = store
@@ -128,8 +112,6 @@ class WorldManager:
         """Initialize world."""
         self.add_world(world_name)
 
-        self.set_world(world_name)
-
         self._init_process_group(
             world_name,
             rank,
@@ -139,27 +121,25 @@ class WorldManager:
             port,
         )
 
-        dist_c10d._world.default_pg = dist_c10d.GroupMember.WORLD
-
         # inform watchdog of addition of a new world
         store = self._worlds_stores[world_name]
         self._event_q.put((store, world_name, rank, world_size))
 
     def add_world(self, world_name, world=None):
         """Add a new world to the world manager."""
-        if world_name in self._worlds:
+        if world_name in dist_c10d._worlds:
             raise ValueError(f"World {world_name} already exists.")
 
         if world is None:
-            world = dist_c10d._World()
+            world = dist_c10d._World(world_name)
 
-        c10dworld = C10dWorld(world)
-        self._worlds[world_name] = c10dworld
+        dist_c10d._worlds[world_name] = world
+
         self._communicator.add_world(world_name)
 
     def remove_world(self, world_name):
         """Remove a world from the world manager."""
-        if world_name not in self._worlds:
+        if world_name not in dist_c10d._worlds:
             raise ValueError(f"World {world_name} does not exist.")
 
         self._communicator.remove_world(world_name)
@@ -168,75 +148,14 @@ class WorldManager:
         del self._worlds_stores[world_name]
 
         logger.debug(f"destory process group for {world_name}")
-        self.set_world(world_name)
-        del self._worlds[world_name]
-        # FIXME: calling destroy_process_group() here causes program hang.
-        #        we need to find out a right timing/way to call this function.
-        #        calling this function is temporarily disabled.
-        # dist.destroy_process_group()
+        # FIXME: the following two lindes of code here causes program hang.
+        #        we need to find out a right timing/way to call them.
+        #        calling them is temporarily disabled.
+        # dist.destroy_process_group(name=world_name)
+        # del dist_c10d._worlds[world_name]
         logger.debug(f"done removing world {world_name}")
-
-    def set_world(self, world_name):
-        """Switch to a world of the given name."""
-        if world_name not in self._worlds:
-            raise ValueError(f"World {world_name} does not exist.")
-
-        if self._current_world == world_name:
-            return
-
-        logger.debug(f"Setting world to {world_name}")
-
-        c10dworld = self._worlds[world_name]
-
-        dist_c10d._world = c10dworld.world
-        dist_c10d.GroupMember.WORLD = dist_c10d._world.default_pg
-
-        dist_c10d._pg_map = c10dworld.pg_map
-        dist_c10d._pg_names = c10dworld.pg_names
-        dist_c10d._pg_group_ranks = c10dworld.pg_group_ranks
-        dist_c10d._pg_backend_config = c10dworld.pg_backend_config
-        dist_c10d._group_count = c10dworld.group_count
-        dist_c10d._backend = c10dworld.backend
-
-        self._current_world = world_name
 
     @property
     def communicator(self):
         """Return the world communicator."""
         return self._communicator
-
-    @staticmethod
-    def world_setter(func):
-        def wrapper(*args, **kwargs):
-            world_name = kwargs["world_name"]
-            world_manager = kwargs["world_manager"]
-
-            # Delete world_name and world_manager from kwargs
-            del kwargs["world_name"]
-            del kwargs["world_manager"]
-
-            world_manager.set_world(world_name)
-
-            return func(*args, **kwargs)
-
-        return wrapper
-
-    @staticmethod
-    def world_initializer(func):
-        def wrapper(*args, **kwargs):
-            world_name = kwargs["world_name"]
-            world_manager = kwargs["world_manager"]
-
-            # Delete world_name and world_manager from kwargs
-            del kwargs["world_name"]
-            del kwargs["world_manager"]
-
-            world_manager.set_world(world_name)
-
-            ret_val = func(*args, **kwargs)
-
-            dist_c10d._world.default_pg = dist_c10d.GroupMember.WORLD
-
-            return ret_val
-
-        return wrapper

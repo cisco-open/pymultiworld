@@ -94,8 +94,6 @@ class WorldCommunicator:
 
         This method supports batched send.
         """
-        self._world_manager.set_world(world_name)
-
         works = self._send(tensors, world_name, rank)
         for w in works:
             while not w.is_completed():
@@ -116,7 +114,7 @@ class WorldCommunicator:
 
             works = []
             for tensor in tensors:
-                work = dist.isend(tensor, dst=rank)
+                work = dist.isend(tensor, dst=rank, name=world_name)
                 works.append(work)
 
             return works
@@ -130,8 +128,6 @@ class WorldCommunicator:
 
         This method supports batched receive.
         """
-        self._world_manager.set_world(world_name)
-
         works = self._recv(tensors, world_name, rank)
         for w in works:
             while not w.is_completed():
@@ -152,7 +148,7 @@ class WorldCommunicator:
 
             works = []
             for tensor in tensors:
-                work = dist.irecv(tensor, src=rank)
+                work = dist.irecv(tensor, src=rank, name=world_name)
                 works.append(work)
 
             return works
