@@ -11,6 +11,211 @@ index 5c224e48fdd..de58b9662c7 100644
      from .rendezvous import (
          rendezvous,
          _create_store_from_options,
+diff --git a/torch/distributed/_tensor/_collective_utils.py b/torch/distributed/_tensor/_collective_utils.py
+index 03226ce1154..1f0ca4a975f 100644
+--- a/torch/distributed/_tensor/_collective_utils.py
++++ b/torch/distributed/_tensor/_collective_utils.py
+@@ -21,6 +21,8 @@ from torch.distributed.distributed_c10d import (
+ logger = logging.getLogger(__name__)
+ 
+ 
++# WARNING: no support for multiple worlds; single (default) world is only supported
++
+ # TODO: we need to migrate these APIs to be functional collectives
+ 
+ 
+@@ -59,7 +61,7 @@ def mesh_scatter(
+     # src need to be global rank
+     src_for_dim = 0
+ 
+-    if dim_group is not GroupMember.WORLD:
++    if dim_group is not GroupMember.get_world():
+         src_for_dim = get_global_rank(dim_group, 0)
+ 
+     if src_for_dim == get_rank():
+@@ -114,7 +116,7 @@ def mesh_broadcast(
+     assert isinstance(dim_group, ProcessGroup)
+     # src need to be global rank
+     src_for_dim = 0
+-    if dim_group is not GroupMember.WORLD:
++    if dim_group is not GroupMember.get_world():
+         src_for_dim = get_global_rank(dim_group, 0)
+ 
+     return broadcast(tensor, src=src_for_dim, group=dim_group, async_op=async_op)
+@@ -142,7 +144,7 @@ def mesh_all_to_all(
+         for i in range(dim_group_size):
+             # src need to be global rank
+             src_for_dim = i
+-            if dim_group is not GroupMember.WORLD:
++            if dim_group is not GroupMember.get_world():
+                 src_for_dim = get_global_rank(dim_group, i)
+ 
+             work = scatter(
+diff --git a/torch/distributed/algorithms/ddp_comm_hooks/default_hooks.py b/torch/distributed/algorithms/ddp_comm_hooks/default_hooks.py
+index a9a6aa3ddb0..9642ef32638 100644
+--- a/torch/distributed/algorithms/ddp_comm_hooks/default_hooks.py
++++ b/torch/distributed/algorithms/ddp_comm_hooks/default_hooks.py
+@@ -3,13 +3,15 @@ from typing import Any, Callable
+ import torch
+ import torch.distributed as dist
+ 
++# WARNING: no support for multiple worlds; single (default) world is only supported
++
+ __all__ = ["allreduce_hook", "fp16_compress_hook", "bf16_compress_hook", "fp16_compress_wrapper", "bf16_compress_wrapper"]
+ 
+ def _allreduce_fut(
+     process_group: dist.ProcessGroup, tensor: torch.Tensor
+ ) -> torch.futures.Future[torch.Tensor]:
+     "Averages the input gradient tensor by allreduce and returns a future."
+-    group_to_use = process_group if process_group is not None else dist.group.WORLD
++    group_to_use = process_group if process_group is not None else dist.group.get_world()
+ 
+     # Apply the division first to avoid overflow, especially for FP16.
+     tensor.div_(group_to_use.size())
+@@ -54,7 +56,7 @@ def fp16_compress_hook(
+         >>> # xdoctest: +SKIP
+         >>> ddp_model.register_comm_hook(process_group, fp16_compress_hook)
+     """
+-    group_to_use = process_group if process_group is not None else dist.group.WORLD
++    group_to_use = process_group if process_group is not None else dist.group.get_world()
+     world_size = group_to_use.size()
+ 
+     compressed_tensor = bucket.buffer().to(torch.float16).div_(world_size)
+@@ -90,7 +92,7 @@ def bf16_compress_hook(
+         >>> # xdoctest: +SKIP
+         >>> ddp_model.register_comm_hook(process_group, bf16_compress_hook)
+     """
+-    group_to_use = process_group if process_group is not None else dist.group.WORLD
++    group_to_use = process_group if process_group is not None else dist.group.get_world()
+     world_size = group_to_use.size()
+ 
+     compressed_tensor = bucket.buffer().to(torch.bfloat16).div_(world_size)
+diff --git a/torch/distributed/algorithms/ddp_comm_hooks/post_localSGD_hook.py b/torch/distributed/algorithms/ddp_comm_hooks/post_localSGD_hook.py
+index 71d0c0ccaf0..1b64290db9d 100644
+--- a/torch/distributed/algorithms/ddp_comm_hooks/post_localSGD_hook.py
++++ b/torch/distributed/algorithms/ddp_comm_hooks/post_localSGD_hook.py
+@@ -7,6 +7,7 @@ from . import default_hooks as default
+ 
+ logger = logging.getLogger(__name__)
+ 
++# WARNING: no support for multiple worlds; single (default) world is only supported
+ 
+ class PostLocalSGDState:
+     r"""
+@@ -90,7 +91,7 @@ def post_localSGD_hook(
+         >>> # Please refer to the examples in ``torch.distributed.algorithms.model_averaging.averagers`` module.
+     """
+     global_group_to_use = (
+-        state.process_group if state.process_group is not None else dist.group.WORLD
++        state.process_group if state.process_group is not None else dist.group.get_world()
+     )
+ 
+     # The input tensor is a flattened 1D tensor.
+diff --git a/torch/distributed/algorithms/ddp_comm_hooks/powerSGD_hook.py b/torch/distributed/algorithms/ddp_comm_hooks/powerSGD_hook.py
+index adc9f54b0c6..86ed9a9e9a6 100644
+--- a/torch/distributed/algorithms/ddp_comm_hooks/powerSGD_hook.py
++++ b/torch/distributed/algorithms/ddp_comm_hooks/powerSGD_hook.py
+@@ -9,6 +9,8 @@ import torch.distributed as dist
+ from . import default_hooks as default
+ from torch.distributed import distributed_c10d
+ 
++# WARNING: no support for multiple worlds; single (default) world is only supported
++
+ __all__ = [
+     "PowerSGDState", "powerSGD_hook", "batched_powerSGD_hook"
+ ]
+@@ -384,7 +386,7 @@ def powerSGD_hook(
+         >>> ddp_model.register_comm_hook(state, powerSGD_hook)
+     """  # noqa: B950
+     process_group = state.process_group
+-    group_to_use = process_group if process_group is not None else dist.group.WORLD
++    group_to_use = process_group if process_group is not None else dist.group.get_world()
+     world_size = group_to_use.size()
+ 
+     # The input tensor is a flattened 1D tensor.
+@@ -690,7 +692,7 @@ def batched_powerSGD_hook(
+         >>> ddp_model.register_comm_hook(state, batched_powerSGD_hook)
+     """  # noqa: B950
+     process_group = state.process_group
+-    group_to_use = process_group if process_group is not None else dist.group.WORLD
++    group_to_use = process_group if process_group is not None else dist.group.get_world()
+     world_size = group_to_use.size()
+ 
+     # The input tensor is a flattened 1D tensor.
+diff --git a/torch/distributed/algorithms/ddp_comm_hooks/quantization_hooks.py b/torch/distributed/algorithms/ddp_comm_hooks/quantization_hooks.py
+index 8aaed342948..ec0d7676f18 100644
+--- a/torch/distributed/algorithms/ddp_comm_hooks/quantization_hooks.py
++++ b/torch/distributed/algorithms/ddp_comm_hooks/quantization_hooks.py
+@@ -2,6 +2,7 @@ import torch
+ import torch.distributed as dist
+ from torch import nn
+ 
++# WARNING: no support for multiple worlds; single (default) world is only supported
+ 
+ def _quantize_per_tensor_cuda(x, scale, zero_point):
+     y = torch.round(x / scale) + zero_point
+@@ -62,7 +63,7 @@ def quantization_pertensor_hook(
+         >>> # xdoctest: +SKIP
+         >>> ddp_model.register_comm_hook(process_group, quantization_pertensor_hook)
+     """
+-    group_to_use = process_group if process_group is not None else dist.group.WORLD
++    group_to_use = process_group if process_group is not None else dist.group.get_world()
+     rank = process_group.rank() if process_group is not None else dist.get_rank()
+     world_size = group_to_use.size()
+ 
+@@ -142,7 +143,7 @@ def quantization_perchannel_hook(
+         >>> # xdoctest: +SKIP
+         >>> ddp_model.register_comm_hook(process_group, quantization_perchannel_hook)
+     """
+-    group_to_use = process_group if process_group is not None else dist.group.WORLD
++    group_to_use = process_group if process_group is not None else dist.group.get_world()
+     rank = process_group.rank() if process_group is not None else dist.get_rank()
+     world_size = group_to_use.size()
+ 
+diff --git a/torch/distributed/algorithms/model_averaging/averagers.py b/torch/distributed/algorithms/model_averaging/averagers.py
+index 3237733c4ea..2fefc8de81e 100644
+--- a/torch/distributed/algorithms/model_averaging/averagers.py
++++ b/torch/distributed/algorithms/model_averaging/averagers.py
+@@ -7,6 +7,8 @@ import torch.distributed.algorithms.model_averaging.utils as utils
+ 
+ __all__ = ['ModelAverager', 'PeriodicModelAverager']
+ 
++# WARNING: no support for multiple worlds; single (default) world is only supported
++
+ class ModelAverager(ABC):
+     r"""Base class for all model averagers.
+ 
+@@ -19,7 +21,7 @@ class ModelAverager(ABC):
+ 
+     def __init__(self, process_group=None):
+         self.process_group = (
+-            process_group if process_group is not None else dist.group.WORLD
++            process_group if process_group is not None else dist.group.get_world()
+         )
+         self.step = 0
+ 
+diff --git a/torch/distributed/algorithms/model_averaging/utils.py b/torch/distributed/algorithms/model_averaging/utils.py
+index d207f627be2..5e095d365e8 100644
+--- a/torch/distributed/algorithms/model_averaging/utils.py
++++ b/torch/distributed/algorithms/model_averaging/utils.py
+@@ -9,6 +9,8 @@ import torch.distributed as dist
+ # if we're trying to use them.
+ from torch.distributed import ProcessGroup, group
+ 
++# WARNING: no support for multiple worlds; single (default) world is only supported
++
+ __all__ = ["average_parameters", "get_params_to_average", "average_parameters_or_parameter_groups"]
+ 
+ def average_parameters(
+@@ -19,7 +21,7 @@ def average_parameters(
+     For allreduce efficiency, all the parameters are flattened into a contiguous buffer.
+     Thus, it requires extra memory of the same size as the given parameters.
+     """
+-    group_to_use = process_group if process_group is not None else group.WORLD
++    group_to_use = process_group if process_group is not None else group.get_world()
+     # Do not update any parameter if not in the process group.
+     if dist._rank_not_in_group(group_to_use):
+         return
 diff --git a/torch/distributed/distributed_c10d.py b/torch/distributed/distributed_c10d.py
 index 27d7919598f..0f43e59243c 100644
 --- a/torch/distributed/distributed_c10d.py
@@ -1826,3 +2031,221 @@ index 27d7919598f..0f43e59243c 100644
  
  # This ops are not friently to TorchDynamo. So, we decide to disallow these ops
  # in FX graph, allowing them to run them on eager, with torch.compile.
+diff --git a/torch/distributed/fsdp/sharded_grad_scaler.py b/torch/distributed/fsdp/sharded_grad_scaler.py
+index 5ab46b380ef..92c9fca7685 100644
+--- a/torch/distributed/fsdp/sharded_grad_scaler.py
++++ b/torch/distributed/fsdp/sharded_grad_scaler.py
+@@ -7,6 +7,8 @@ import torch.distributed as dist
+ from torch.cuda.amp.grad_scaler import _MultiDeviceReplicator, GradScaler, OptState
+ from torch.distributed.distributed_c10d import ProcessGroup
+ 
++# WARNING: no support for multiple worlds; single (default) world is only supported
++
+ log = logging.getLogger(__name__)
+ 
+ 
+@@ -86,7 +88,7 @@ class ShardedGradScaler(GradScaler):
+         growth_factor: float = 2.0,
+         growth_interval: int = 2000,
+         enabled: bool = True,
+-        process_group: Optional[ProcessGroup] = dist.group.WORLD,
++        process_group: Optional[ProcessGroup] = dist.group.get_world(),
+     ) -> None:
+         super().__init__(
+             init_scale=init_scale,
+diff --git a/torch/distributed/nn/functional.py b/torch/distributed/nn/functional.py
+index 59b3c60009a..c4b71296c71 100644
+--- a/torch/distributed/nn/functional.py
++++ b/torch/distributed/nn/functional.py
+@@ -6,7 +6,9 @@ from torch.autograd import Function
+ # if we're trying to use them.
+ from torch.distributed import group, ReduceOp
+ 
+-def broadcast(tensor, src, group=group.WORLD):
++# WARNING: no support for multiple worlds; single (default) world is only supported
++
++def broadcast(tensor, src, group=group.get_world()):
+     """
+     Broadcasts the tensor to the whole group.
+ 
+@@ -26,7 +28,7 @@ def broadcast(tensor, src, group=group.WORLD):
+     return _Broadcast.apply(src, group, tensor)
+ 
+ 
+-def gather(tensor, dst=0, group=group.WORLD):
++def gather(tensor, dst=0, group=group.get_world()):
+     """
+     Gathers a list of tensors in a single process.
+ 
+@@ -41,7 +43,7 @@ def gather(tensor, dst=0, group=group.WORLD):
+     return _Gather.apply(dst, group, tensor)
+ 
+ 
+-def scatter(tensors, src=0, group=group.WORLD):
++def scatter(tensors, src=0, group=group.get_world()):
+     """
+     Scatters a list of tensors to all processes in a group.
+ 
+@@ -61,7 +63,7 @@ def scatter(tensors, src=0, group=group.WORLD):
+     return _Scatter.apply(src, group, *tensors)
+ 
+ 
+-def reduce(tensor, dst, op=ReduceOp.SUM, group=group.WORLD):
++def reduce(tensor, dst, op=ReduceOp.SUM, group=group.get_world()):
+     """
+     Reduces the tensor data across all machines.
+ 
+@@ -82,7 +84,7 @@ def reduce(tensor, dst, op=ReduceOp.SUM, group=group.WORLD):
+     return _Reduce.apply(dst, op, group, tensor)
+ 
+ 
+-def reduce_scatter(output, input_list, op=ReduceOp.SUM, group=group.WORLD):
++def reduce_scatter(output, input_list, op=ReduceOp.SUM, group=group.get_world()):
+     """
+     Reduces, then scatters a list of tensors to all processes in a group.
+ 
+@@ -101,7 +103,7 @@ def reduce_scatter(output, input_list, op=ReduceOp.SUM, group=group.WORLD):
+     return _Reduce_Scatter.apply(op, group, output, *input_list)
+ 
+ 
+-def all_gather(tensor, group=group.WORLD):
++def all_gather(tensor, group=group.get_world()):
+     """
+     Gathers tensors from the whole group in a list.
+ 
+@@ -115,7 +117,7 @@ def all_gather(tensor, group=group.WORLD):
+     """
+     return _AllGather.apply(group, tensor)
+ 
+-def _all_gather_base(output_tensor, input_tensor, group=group.WORLD):
++def _all_gather_base(output_tensor, input_tensor, group=group.get_world()):
+     """
+     Single tensor all gather. Gathers a single tensor from all ranks, and puts them in a single output tensor.
+ 
+@@ -151,7 +153,7 @@ def _all_gather_base(output_tensor, input_tensor, group=group.WORLD):
+     return _AllGatherBase.apply(output_tensor, input_tensor, group)
+ 
+ 
+-def all_to_all(output_tensor_list, input_tensor_list, group=group.WORLD):
++def all_to_all(output_tensor_list, input_tensor_list, group=group.get_world()):
+     """
+     Each process scatters list of input tensors to all processes in a group and return gathered list of tensors in output list.
+ 
+@@ -172,7 +174,7 @@ def all_to_all_single(
+     input,
+     output_split_sizes=None,
+     input_split_sizes=None,
+-    group=group.WORLD,
++    group=group.get_world(),
+ ):
+     """
+     Each process splits input tensor and then scatters the split list to all processes in a group.
+@@ -198,7 +200,7 @@ def all_to_all_single(
+     )
+ 
+ 
+-def all_reduce(tensor, op=ReduceOp.SUM, group=group.WORLD):
++def all_reduce(tensor, op=ReduceOp.SUM, group=group.get_world()):
+     """
+     Reduces the tensor data across all machines in such a way that all get the final result.
+ 
+diff --git a/torch/distributed/optim/zero_redundancy_optimizer.py b/torch/distributed/optim/zero_redundancy_optimizer.py
+index 8a3be3b0181..8d6c30cea99 100644
+--- a/torch/distributed/optim/zero_redundancy_optimizer.py
++++ b/torch/distributed/optim/zero_redundancy_optimizer.py
+@@ -19,6 +19,7 @@ from torch.distributed.algorithms.join import Join, Joinable, JoinHook
+ from torch.distributed.optim.utils import functional_optim_map
+ from torch.optim import Optimizer
+ 
++# WARNING: no support for multiple worlds; single (default) world is only supported
+ 
+ logger = logging.getLogger(__name__)
+ 
+@@ -69,7 +70,7 @@ def _is_trainable(param: torch.Tensor) -> bool:
+ def _broadcast_object(
+     obj: Any,
+     src_rank: int,
+-    group: object = dist.group.WORLD,
++    group: object = dist.group.get_world(),
+     device: torch.device = torch.device("cpu"),
+ ) -> Any:
+     r"""
+@@ -409,7 +410,7 @@ class ZeroRedundancyOptimizer(Optimizer, Joinable):
+         self._default_device = self._all_params[0].device
+ 
+         self.process_group = (
+-            process_group if process_group is not None else dist.group.WORLD
++            process_group if process_group is not None else dist.group.get_world()
+         )
+         self.world_size: int = dist.get_world_size(self.process_group)
+         self.rank: int = dist.get_rank(self.process_group)
+diff --git a/torch/nn/modules/batchnorm.py b/torch/nn/modules/batchnorm.py
+index 6bbc0e7deb4..375e656d483 100644
+--- a/torch/nn/modules/batchnorm.py
++++ b/torch/nn/modules/batchnorm.py
+@@ -561,6 +561,7 @@ class LazyBatchNorm3d(_LazyNormBase, _BatchNorm):
+         if input.dim() != 5:
+             raise ValueError(f"expected 5D input (got {input.dim()}D input)")
+ 
++# WARNING: no support for multiple worlds; single (default) world is only supported
+ 
+ class SyncBatchNorm(_BatchNorm):
+     r"""Applies Batch Normalization over a N-Dimensional input (a mini-batch of [N-2]D inputs
+@@ -744,7 +745,7 @@ class SyncBatchNorm(_BatchNorm):
+                 raise ValueError("SyncBatchNorm expected input tensor to be on GPU or "
+                                  f"{torch._C._get_privateuse1_backend_name()}")
+ 
+-            process_group = torch.distributed.group.WORLD
++            process_group = torch.distributed.group.get_world()
+             if self.process_group:
+                 process_group = self.process_group
+             world_size = torch.distributed.get_world_size(process_group)
+diff --git a/torch/testing/_internal/distributed/distributed_test.py b/torch/testing/_internal/distributed/distributed_test.py
+index a8db76ed333..05c58e3d58e 100644
+--- a/torch/testing/_internal/distributed/distributed_test.py
++++ b/torch/testing/_internal/distributed/distributed_test.py
+@@ -626,7 +626,7 @@ class DistributedTest:
+ 
+         def _init_global_test(self):
+             group = list(range(0, dist.get_world_size()))
+-            group_id = dist.group.WORLD
++            group_id = dist.group.get_world()
+             rank = dist.get_rank()
+             return (group, group_id, rank)
+ 
+@@ -817,7 +817,7 @@ class DistributedTest:
+                 rank=self.rank,
+                 timeout=timeout,
+             )
+-            self._test_barrier_timeout(dist.group.WORLD, timeout)
++            self._test_barrier_timeout(dist.group.get_world(), timeout)
+ 
+         @skip_if_small_worldsize
+         @skip_but_pass_in_sandcastle_if(
+@@ -2531,7 +2531,7 @@ class DistributedTest:
+                 opts = AllreduceOptions()
+                 opts.reduceOp = dist.ReduceOp.SUM
+ 
+-                if group_id == GroupMember.WORLD:
++                if group_id == GroupMember.get_world():
+                     work = _get_default_group().allreduce([tensor], opts)
+                 else:
+                     work = group_id.allreduce([tensor], opts)
+@@ -5157,7 +5157,7 @@ class DistributedTest:
+             # Although we start run local SGD at iteration 10, since we still use the global process group to run it,
+             # the post-LocalSGD actually still allreduces gradients globally for the remaining iterations.
+             state = post_localSGD.PostLocalSGDState(
+-                process_group=None, subgroup=dist.group.WORLD, start_localSGD_iter=10
++                process_group=None, subgroup=dist.group.get_world(), start_localSGD_iter=10
+             )
+             self._test_ddp_hook_parity(
+                 state=state, hook=post_localSGD.post_localSGD_hook
+@@ -5169,7 +5169,7 @@ class DistributedTest:
+             start_localSGD_iter = 10
+             state = post_localSGD.PostLocalSGDState(
+                 process_group=None,
+-                subgroup=dist.group.WORLD,
++                subgroup=dist.group.get_world(),
+                 start_localSGD_iter=start_localSGD_iter,
+                 post_local_gradient_allreduce=False,
+             )
