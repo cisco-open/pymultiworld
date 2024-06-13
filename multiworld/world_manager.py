@@ -16,6 +16,7 @@
 
 """Class to create and manage multiple worlds."""
 import asyncio
+import concurrent.futures
 import logging
 import os
 from asyncio import Queue as ASyncQ
@@ -100,7 +101,7 @@ class WorldManager:
         self._worlds_stores[world_name] = store
         logger.info(f"({os.getpid()}) init_process_group done")
 
-    def initialize_world(
+    async def initialize_world(
         self,
         world_name: str,
         rank: int,
@@ -112,14 +113,18 @@ class WorldManager:
         """Initialize world."""
         self.add_world(world_name)
 
-        self._init_process_group(
-            world_name,
-            rank,
-            world_size,
-            backend,
-            addr,
-            port,
-        )
+        loop = asyncio.get_running_loop()
+        with concurrent.futures.ThreadPoolExecutor() as pool:
+            _ = await loop.run_in_executor(
+                pool,
+                self._init_process_group,
+                world_name,
+                rank,
+                world_size,
+                backend,
+                addr,
+                port,
+            )
 
         # inform watchdog of addition of a new world
         store = self._worlds_stores[world_name]
