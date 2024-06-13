@@ -29,7 +29,7 @@ import torch
 import torch.distributed as dist
 
 
-def init_world(world_name, rank, size, backend="gloo", addr="127.0.0.1", port=-1):
+async def init_world(world_name, rank, size, backend="gloo", addr="127.0.0.1", port=-1):
     """
     Initialize the distributed environment.
 
@@ -41,7 +41,7 @@ def init_world(world_name, rank, size, backend="gloo", addr="127.0.0.1", port=-1
         addr (str): Address to use for communication.
         port (int): Port to use for communication.
     """
-    world_manager.initialize_world(
+    await world_manager.initialize_world(
         world_name, rank, size, backend=backend, addr=addr, port=port
     )
 
@@ -140,16 +140,16 @@ async def main(args):
     world_manager = dist.WorldManager()
 
     if args.rank == 0:
-        init_world("world1", args.rank, size, args.backend, args.addr, 29500)
-        init_world("world2", args.rank, size, args.backend, args.addr, 30500)
+        await init_world("world1", args.rank, size, args.backend, args.addr, 29500)
+        await init_world("world2", args.rank, size, args.backend, args.addr, 30500)
         await receive_data(world_manager.communicator, args.backend, args.batch)
 
     elif args.rank == 1:
-        init_world("world1", 1, size, args.backend, args.addr, 29500)
+        await init_world("world1", 1, size, args.backend, args.addr, 29500)
         await send_data("world1", 1, size, args.backend, args.batch)
 
     elif args.rank == 2:
-        init_world("world2", 1, size, args.backend, args.addr, 30500)
+        await init_world("world2", 1, size, args.backend, args.addr, 30500)
         await send_data("world2", 1, size, args.backend, args.batch)
 
     else:
