@@ -46,25 +46,21 @@ async def init_world(world_name, rank, size, backend="gloo", addr="127.0.0.1", p
     )
 
 
-def _prepare_tensors(rank, backend, batch):
+def _prepare_tensor(rank, backend):
     """
-    Prepare tensors for sending.
+    Prepare a tensor for sending.
 
     Args:
         rank (int): Rank of the process.
         backend (str): Backend used for communication.
-        batch (int): Number of tensors to send.
     """
-    tensors = list()
-    for _ in range(batch):
-        tensor = torch.ones(1)
-        tensor = tensor.to(f"cuda:{rank}") if backend == "nccl" else tensor
-        tensors.append(tensor)
+    tensor = torch.ones(1)
+    tensor = tensor.to(f"cuda:{rank}") if backend == "nccl" else tensor
 
-    return tensors
+    return tensor
 
 
-async def send_data(world_name, rank, size, backend, batch):
+async def send_data(world_name, rank, size, backend):
     """
     Async function to send tensors from the leader process to the other process.
 
@@ -73,7 +69,6 @@ async def send_data(world_name, rank, size, backend, batch):
         rank (int): Rank of the process.
         size (int): Number of processes.
         backend (str): Backend used for communication.
-        batch (int): Number of tensors to send.
     """
     world_communicator = world_manager.communicator
 
@@ -84,16 +79,16 @@ async def send_data(world_name, rank, size, backend, batch):
 
         time.sleep(1)
 
-        tensors = _prepare_tensors(rank, backend, batch)
+        tensor = _prepare_tensor(rank, backend)
 
         try:
-            await world_communicator.send(tensors, world_name, rank_to_send)
+            await world_communicator.send(tensor, world_name, rank_to_send)
         except Exception as e:
             print(f"caught an exception: {e}")
             print("terminate sending")
             break
 
-        print(f"world: {world_name}, my rank: {rank}, tensors: {tensors}")
+        print(f"world: {world_name}, my rank: {rank}, tensor: {tensor}")
 
     print("got out of the loop")
 
@@ -101,30 +96,29 @@ async def send_data(world_name, rank, size, backend, batch):
 world_manager = None
 
 
-async def receive_data(world_communicator, backend, batch):
+async def receive_data(world_communicator, backend):
     """
     Async function to receive data from multiple worlds in a leader process.
 
     Args:
         world_communicator: World communicator
         backend: Backend to use for distributed communication
-        batch: Number of tensors to receive
     """
     worlds = {"world1", "world2"}
 
     while len(worlds):
         for world in list(worlds):
-            tensors = _prepare_tensors(0, backend, batch)
+            tensor = _prepare_tensor(0, backend)
 
             try:
-                await world_communicator.recv(tensors, world, 1)
+                await world_communicator.recv(tensor, world, 1)
             except Exception as e:
                 print(f"caught an exception: {e}")
                 worlds.remove(world)
                 # time.sleep(1)
                 continue
 
-            print(f"received {tensors} from rank 1 in {world}")
+            print(f"received {tensor} from rank 1 in {world}")
 
 
 async def main(args):
@@ -142,15 +136,15 @@ async def main(args):
     if args.rank == 0:
         await init_world("world1", args.rank, size, args.backend, args.addr, 29500)
         await init_world("world2", args.rank, size, args.backend, args.addr, 30500)
-        await receive_data(world_manager.communicator, args.backend, args.batch)
+        await receive_data(world_manager.communicator, args.backend)
 
     elif args.rank == 1:
         await init_world("world1", 1, size, args.backend, args.addr, 29500)
-        await send_data("world1", 1, size, args.backend, args.batch)
+        await send_data("world1", 1, size, args.backend)
 
     elif args.rank == 2:
         await init_world("world2", 1, size, args.backend, args.addr, 30500)
-        await send_data("world2", 1, size, args.backend, args.batch)
+        await send_data("world2", 1, size, args.backend)
 
     else:
         print("rank error: rank should be 0, 1 or 2.")
@@ -164,7 +158,6 @@ if __name__ == "__main__":
     parser.add_argument("--backend", default="gloo")
     parser.add_argument("--addr", default="127.0.0.1")
     parser.add_argument("--rank", type=int)
-    parser.add_argument("--batch", default=1, type=int)
 
     # https://github.com/pytorch/pytorch/blob/main/torch/csrc/distributed/c10d/ProcessGroupNCCL.hpp#L114-L126
     # "2" is CleanUpOnly
