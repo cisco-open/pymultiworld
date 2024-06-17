@@ -19,7 +19,6 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from queue import SimpleQueue as SimpleSyncQ
 from typing import TYPE_CHECKING
 
 import torch.distributed as dist
@@ -66,8 +65,6 @@ class WorldCommunicator:
         """Initialize a class instance."""
         self._world_manager = world_manager
         self._broken_world: dict[str, bool] = {}
-
-        self._tensor_rx_q = SimpleSyncQ()
 
         self._loop = asyncio.get_running_loop()
 
@@ -209,8 +206,3 @@ class WorldCommunicator:
                 raise BrokenWorldException(f"{world_name}")
 
         raise error
-
-    @property
-    def rx_q(self):
-        """Return the rx queue for received tensors."""
-        return self._tensor_rx_q
