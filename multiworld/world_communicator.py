@@ -20,7 +20,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from queue import SimpleQueue as SimpleSyncQ
-from typing import TYPE_CHECKING, Union
+from typing import TYPE_CHECKING
 
 import torch.distributed as dist
 from torch import Tensor
@@ -87,73 +87,117 @@ class WorldCommunicator:
         except KeyError:
             pass
 
-    async def send(
-        self, tensors: Union[Tensor, list[Tensor]], world_name: str, rank: int
-    ) -> None:
-        """Send a tensor or a list of tensors to a specific rank in a world.
+    async def _wait_work(self, work: Work, world_name: str) -> None:
+        """Do busy-waiting for work to be done.
 
-        This method supports batched send.
+        It also checks if a world is broken or not. If so, it raises
+        BrokenWorldException exception.
         """
-        works = self._send(tensors, world_name, rank)
-        for w in works:
-            while not w.is_completed():
-                if self._broken_world[world_name]:
-                    raise BrokenWorldException(f"{world_name}")
-                await asyncio.sleep(0)
+        while not work.is_completed():
+            if self._broken_world[world_name]:
+                raise BrokenWorldException(f"{world_name}")
+            await asyncio.sleep(0)
 
-    def _send(
-        self,
-        tensors: Union[Tensor, list[Tensor]],
-        world_name: str,
-        rank: int,
-    ) -> list[Work]:
-        # Catch any errors due to worker failures
+    async def send(self, tensor: Tensor, world_name: str, dst: int) -> None:
+        """Send a tensor to a destination in a world."""
         try:
-            if isinstance(tensors, Tensor):
-                tensors = [tensors]
-
-            works = []
-            for tensor in tensors:
-                work = dist.isend(tensor, dst=rank, name=world_name)
-                works.append(work)
-
-            return works
+            work = dist.isend(tensor, dst=dst, name=world_name)
         except RuntimeError as e:
             self._handle_error(e, world_name)
 
-    async def recv(
-        self, tensors: Union[Tensor, list[Tensor]], world_name: str, rank: int
-    ) -> None:
-        """Receive tensor(s) from a specific rank in a world.
+        await self._wait_work(work, world_name)
 
-        This method supports batched receive.
-        """
-        works = self._recv(tensors, world_name, rank)
-        for w in works:
-            while not w.is_completed():
-                if self._broken_world[world_name]:
-                    raise BrokenWorldException(f"{world_name}")
-                await asyncio.sleep(0)
-
-    def _recv(
-        self,
-        tensors: Union[Tensor, list[Tensor]],
-        world_name: str,
-        rank: int,
-    ) -> list[Work]:
-        # Catch any errors due to worker failures
+    async def recv(self, tensor: Tensor, world_name: str, src: int) -> None:
+        """Receive a tensor from a specific rank in a world."""
         try:
-            if isinstance(tensors, Tensor):
-                tensors = [tensors]
-
-            works = []
-            for tensor in tensors:
-                work = dist.irecv(tensor, src=rank, name=world_name)
-                works.append(work)
-
-            return works
+            work = dist.irecv(tensor, src=src, name=world_name)
         except RuntimeError as e:
             self._handle_error(e, world_name)
+
+        await self._wait_work(work, world_name)
+
+    async def broadcast(self, tensor: Tensor, world_name: str, src: int) -> None:
+        """Broadcast a tensor to the world from a source (src)."""
+        try:
+            work = dist.broadcast(tensor, src, async_op=True, name=world_name)
+        except RuntimeError as e:
+            self._handle_error(e, world_name)
+
+        await self._wait_work(work, world_name)
+
+    async def all_reduce(self, tensor: Tensor, world_name: str) -> None:
+        """Do all-reduce for a given tensor in a world."""
+        try:
+            work = dist.all_reduce(tensor, async_op=True, name=world_name)
+        except RuntimeError as e:
+            self._handle_error(e, world_name)
+
+        await self._wait_work(work, world_name)
+
+    async def reduce(self, tensor: Tensor, world_name: str, dst: int) -> None:
+        """Do reduce for a given tensor in a world.
+
+        The rank is a receiver of the final result.
+        """
+        try:
+            work = dist.reduce(tensor, dst, async_op=True, name=world_name)
+        except RuntimeError as e:
+            self._handle_error(e, world_name)
+
+        await self._wait_work(work, world_name)
+
+    async def all_gather(
+        self, tensors: list[Tensor], tensor: Tensor, world_name: str
+    ) -> None:
+        """Do all-gather for a given tensor in a world."""
+        try:
+            work = dist.all_gather(tensors, tensor, async_op=True, name=world_name)
+        except RuntimeError as e:
+            self._handle_error(e, world_name)
+
+        await self._wait_work(work, world_name)
+
+    async def gather(
+        self,
+        tensor: Tensor,
+        world_name: str,
+        dst: int,
+        gather_list: list[Tensor] = None,
+    ) -> None:
+        """Do gather for a list of tensors in a world."""
+        try:
+            work = dist.gather(
+                tensor,
+                gahter_list=gather_list,
+                dst=dst,
+                async_op=True,
+                name=world_name,
+            )
+        except RuntimeError as e:
+            self._handle_error(e, world_name)
+
+        await self._wait_work(work, world_name)
+
+    async def scatter(
+        self,
+        tensor: Tensor,
+        world_name: str,
+        src: int,
+        scatter_list: list[Tensor] = None,
+    ) -> None:
+        """Do scatter for a list of tensors from a source (src) in a world."""
+        try:
+            work = dist.scatter(
+                tensor,
+                scatter_list=scatter_list,
+                src=src,
+                async_op=True,
+                name=world_name,
+            )
+        except RuntimeError as e:
+            self._handle_error(e, world_name)
+
+        await self._wait_work(work, world_name)
 
     def _handle_error(self, error: RuntimeError, world_name: str) -> None:
         error_message = str(error)
