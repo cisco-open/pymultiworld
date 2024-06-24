@@ -60,6 +60,10 @@ def _prepare_tensor(rank, backend):
     return tensor
 
 
+def _check_rank(rank):
+    assert rank <= 1, "rank error: rank should be 0 or 1."
+
+
 async def send_data(world_name, rank, size, backend):
     """
     Async function to send tensors from the leader process to the other process.
@@ -96,7 +100,7 @@ async def send_data(world_name, rank, size, backend):
 world_manager = None
 
 
-async def receive_data(world_communicator, backend):
+async def receive_data(world_communicator, backend, worlds):
     """
     Async function to receive data from multiple worlds in a leader process.
 
@@ -104,10 +108,9 @@ async def receive_data(world_communicator, backend):
         world_communicator: World communicator
         backend: Backend to use for distributed communication
     """
-    worlds = {"world1", "world2"}
 
     while len(worlds):
-        for world in list(worlds):
+        for world in worlds:
             tensor = _prepare_tensor(0, backend)
 
             try:
@@ -133,22 +136,37 @@ async def main(args):
 
     world_manager = dist.WorldManager()
 
-    if args.rank == 0:
-        await init_world("world1", args.rank, size, args.backend, args.addr, 29500)
-        await init_world("world2", args.rank, size, args.backend, args.addr, 30500)
-        await receive_data(world_manager.communicator, args.backend)
+    assert len(args.worldinfo) <= 2, "the number of worldinfo arguments must be <= 2"
 
-    elif args.rank == 1:
-        await init_world("world1", 1, size, args.backend, args.addr, 29500)
-        await send_data("world1", 1, size, args.backend)
+    if len(args.worldinfo) > 1:
+        worlds = []
+        for item in args.worldinfo:
+            world_index, rank = item.split(",")
+            rank = int(rank)
+            world_index = int(world_index)
 
-    elif args.rank == 2:
-        await init_world("world2", 1, size, args.backend, args.addr, 30500)
-        await send_data("world2", 1, size, args.backend)
+            _check_rank(rank)
+
+            port = 29500 + world_index * 1000
+            world_name = f"world{world_index}"
+            worlds.append(world_name)
+
+            await init_world(world_name, rank, size, args.backend, args.addr, port)
+
+        await receive_data(world_manager.communicator, args.backend, worlds)
 
     else:
-        print("rank error: rank should be 0, 1 or 2.")
-        exit(1)
+        world_index, rank = args.worldinfo[0].split(",")
+        rank = int(rank)
+        world_index = int(world_index)
+
+        _check_rank(rank)
+
+        port = 29500 + world_index * 1000
+        world_name = f"world{world_index}"
+
+        await init_world(world_name, rank, size, args.backend, args.addr, port)
+        await send_data(world_name, rank, size, args.backend)
 
     world_manager.cleanup()
 
@@ -157,7 +175,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--backend", default="gloo")
     parser.add_argument("--addr", default="127.0.0.1")
-    parser.add_argument("--rank", type=int)
+    parser.add_argument("--worldinfo", type=str, action="append")
 
     # https://github.com/pytorch/pytorch/blob/main/torch/csrc/distributed/c10d/ProcessGroupNCCL.hpp#L114-L126
     # "2" is CleanUpOnly
