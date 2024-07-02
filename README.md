@@ -86,17 +86,21 @@ In the example, a leader process is a part of multiple worlds and receives from 
 Script can be run using the following commands.
 
 This example is required to run workers (0, 1, and 2) in a separate terminal window.
+The lead worker needs to be executed with two world 1 and 2, with the rank of 0
+The child workers must match the world index of the lead worker and the rank of 1.
+`--worldinfo` argument is composed by the world index and the rank of the worker in that world.
+(e.g. `--worldinfo 1,0` means that the worker will have rank `0` in the world with the index `1`)
 The script can be executed in a single host or across hosts.
 To run processes on different hosts, `--addr` arugment  can be used.
 For example, run the following commands, by changing the IP address (10.20.1.50) correctly in your setting.
 
 ```bash
 # on terminal window 1
-python multiworld_asyncio.py --backend nccl --rank 0 --addr 10.20.1.50
+python multiworld_asyncio.py --backend nccl --worldinfo 1,0 --worldinfo 2,0 --addr 10.20.1.50
 # on terminal window 2
-python multiworld_asyncio.py --backend nccl --rank 1 --addr 10.20.1.50
+python multiworld_asyncio.py --backend nccl --worldinfo 1,1 --addr 10.20.1.50
 # on terminal window 3
-python multiworld_asyncio.py --backend nccl --rank 2 --addr 10.20.1.50
+python multiworld_asyncio.py --backend nccl --worldinfo 2,1 --addr 10.20.1.50
 ```
 
 Here the IP address is the IP address of rank 0. We assume that at least 3 GPUs are available either in a single host or across hosts.
