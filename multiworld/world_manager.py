@@ -19,6 +19,7 @@ import asyncio
 import concurrent.futures
 import logging
 import os
+import sys
 from asyncio import Queue as ASyncQ
 from datetime import timedelta
 from queue import Queue as SyncQ
@@ -56,6 +57,7 @@ class WorldManager:
         #       terminationof the process. We need to figure out why
         #       sometimes it's not terminated without explicit call of
         #       os._exit(0).
+        sys.stdout.flush()
         os._exit(0)
 
     async def _cleanup_worlds(self):
