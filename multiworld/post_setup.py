@@ -19,19 +19,25 @@ import os
 import pathlib
 import shutil
 import site
-
+import torch
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("patchfile")
+    parser.add_argument("patchfile", nargs='?', default=None, help="Path to the patch file")
     args = parser.parse_args()
-
-    patch_basename = os.path.basename(args.patchfile)
 
     path_to_sitepackages = site.getsitepackages()[0]
 
+    if args.patchfile:
+        patchfile = args.patchfile
+    else:
+        torch_version = torch.__version__.split('+')[0] # torch version is in "2.2.1+cu121" format
+        patchfile = os.path.join(path_to_sitepackages, "multiworld", "patch", "pytorch-v" + torch_version + ".patch")
+
+    patch_basename = os.path.basename(patchfile)
+
     dst = os.path.join(path_to_sitepackages, patch_basename)
-    shutil.copyfile(args.patchfile, dst)
+    shutil.copyfile(patchfile, dst)
 
     os.chdir(path_to_sitepackages)
 
