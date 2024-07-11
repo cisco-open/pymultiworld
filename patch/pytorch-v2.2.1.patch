@@ -1,5 +1,5 @@
 diff --git a/torch/distributed/__init__.py b/torch/distributed/__init__.py
-index 5c224e48fdd..de58b9662c7 100644
+index 5c224e48fdd..56198eca4a9 100644
 --- a/torch/distributed/__init__.py
 +++ b/torch/distributed/__init__.py
 @@ -107,6 +107,8 @@ if is_available():
@@ -7,7 +7,7 @@ index 5c224e48fdd..de58b9662c7 100644
      )
  
 +    from .world_manager import WorldManager
-+    
++
      from .rendezvous import (
          rendezvous,
          _create_store_from_options,
@@ -217,7 +217,7 @@ index d207f627be2..5e095d365e8 100644
      if dist._rank_not_in_group(group_to_use):
          return
 diff --git a/torch/distributed/distributed_c10d.py b/torch/distributed/distributed_c10d.py
-index 27d7919598f..0f43e59243c 100644
+index 27d7919598f..60985ab2778 100644
 --- a/torch/distributed/distributed_c10d.py
 +++ b/torch/distributed/distributed_c10d.py
 @@ -425,15 +425,16 @@ class _CollOp:
@@ -709,7 +709,7 @@ index 27d7919598f..0f43e59243c 100644
      timeout=None,
 -    pg_tag=None
 +    pg_tag=None,
-+    name: str = DEFAULT_WORLD_NAME    
++    name: str = DEFAULT_WORLD_NAME
  ):
      """
      Create a new distributed process group.
@@ -1218,7 +1218,7 @@ index 27d7919598f..0f43e59243c 100644
  
 -    if group is None or group is GroupMember.WORLD:
 -        default_pg = _get_default_group()
-+    if group is None or group is GroupMember[name].get_world(name):
++    if group is None or group is GroupMember.get_world(name):
 +        default_pg = _get_default_group(name)
          work = default_pg.reduce([tensor], opts)
      else:
@@ -1740,11 +1740,20 @@ index 27d7919598f..0f43e59243c 100644
  
  @_exception_logger
 -def barrier(group=GroupMember.WORLD, async_op=False, device_ids=None):
-+def barrier(group, async_op=False, device_ids=None, name: str = DEFAULT_WORLD_NAME):
++def barrier(group=None, async_op=False, device_ids=None, name: str = DEFAULT_WORLD_NAME):
      """
      Synchronize all processes.
  
-@@ -3425,7 +3439,7 @@ def barrier(group=GroupMember.WORLD, async_op=False, device_ids=None):
+@@ -3420,12 +3434,15 @@ def barrier(group=GroupMember.WORLD, async_op=False, device_ids=None):
+         Async work handle, if async_op is set to True.
+         None, if not async_op or if not part of the group
+     """
++    if group is None:
++        group = GroupMember.get_world(name)
++
+     if _rank_not_in_group(group):
+-        _warn_not_in_group("barrier")
++        _warn_not_in_group("barrier", name)
          return
  
      opts = BarrierOptions()
@@ -1753,7 +1762,7 @@ index 27d7919598f..0f43e59243c 100644
      if device_ids is not None:
          if isinstance(device_ids, list):
              opts.device_ids = device_ids
-@@ -3435,7 +3449,7 @@ def barrier(group=GroupMember.WORLD, async_op=False, device_ids=None):
+@@ -3435,7 +3452,7 @@ def barrier(group=GroupMember.WORLD, async_op=False, device_ids=None):
              )
  
      if group is None:
@@ -1762,7 +1771,7 @@ index 27d7919598f..0f43e59243c 100644
          work = default_pg.barrier(opts=opts)
      else:
          work = group.barrier(opts=opts)
-@@ -3446,7 +3460,7 @@ def barrier(group=GroupMember.WORLD, async_op=False, device_ids=None):
+@@ -3446,7 +3463,7 @@ def barrier(group=GroupMember.WORLD, async_op=False, device_ids=None):
          work.wait()
  
  
@@ -1771,7 +1780,7 @@ index 27d7919598f..0f43e59243c 100644
      """
      Synchronize processes similar to ``torch.distributed.barrier``, but consider a configurable timeout.
  
-@@ -3496,15 +3510,17 @@ def monitored_barrier(group=GroupMember.WORLD, timeout=None, wait_all_ranks=Fals
+@@ -3496,15 +3513,17 @@ def monitored_barrier(group=GroupMember.WORLD, timeout=None, wait_all_ranks=Fals
      """
      # Need to call rank not in group before using the group, otherwise
      # "Invalid process group" error is raised.
@@ -1792,7 +1801,7 @@ index 27d7919598f..0f43e59243c 100644
      elif isinstance(timeout, float):
          # TODO(whc) aparently some existing test case for monitored_barrier passes in a timeout in float format?
          warnings.warn(
-@@ -3515,7 +3531,7 @@ def monitored_barrier(group=GroupMember.WORLD, timeout=None, wait_all_ranks=Fals
+@@ -3515,7 +3534,7 @@ def monitored_barrier(group=GroupMember.WORLD, timeout=None, wait_all_ranks=Fals
  
      _check_valid_timeout(timeout)
  
@@ -1801,7 +1810,7 @@ index 27d7919598f..0f43e59243c 100644
      return group_to_use.monitored_barrier(timeout, wait_all_ranks=wait_all_ranks)
  
  
-@@ -3546,27 +3562,27 @@ def _process_group_color(ranks: List[int]) -> int:
+@@ -3546,27 +3565,27 @@ def _process_group_color(ranks: List[int]) -> int:
      # Convert our hash to an int, but avoid negative numbers by shifting a bit.
      return int(_hash_ranks(ranks), 16) % (sys.maxsize >> 1)
  
@@ -1837,7 +1846,7 @@ index 27d7919598f..0f43e59243c 100644
      """
      Create a new distributed group.
  
-@@ -3621,7 +3637,7 @@ def new_group(ranks=None, timeout=None, backend=None, pg_options=None, use_local
+@@ -3621,7 +3640,7 @@ def new_group(ranks=None, timeout=None, backend=None, pg_options=None, use_local
      multiple overlaping process groups. To avoid that, make sure all ranks follow the
      same global creation order.
      """
@@ -1846,7 +1855,7 @@ index 27d7919598f..0f43e59243c 100644
  
  def _new_group_with_tag(
      ranks=None,
-@@ -3629,7 +3645,8 @@ def _new_group_with_tag(
+@@ -3629,7 +3648,8 @@ def _new_group_with_tag(
      backend=None,
      pg_options=None,
      pg_tag=None,
@@ -1856,7 +1865,7 @@ index 27d7919598f..0f43e59243c 100644
  ):
      """
      Variant of ``new_group`` that exposes tag creation.
-@@ -3637,10 +3654,10 @@ def _new_group_with_tag(
+@@ -3637,10 +3657,10 @@ def _new_group_with_tag(
      :: N.B. The mechanism is experimental and tied to the functional collectives effort, see
      ``torch.distributed._functional_collectives`` for reference on how to use it.
      """
@@ -1870,7 +1879,7 @@ index 27d7919598f..0f43e59243c 100644
      global_rank = default_pg.rank()
      global_world_size = default_pg.size()
  
-@@ -3661,7 +3678,7 @@ def _new_group_with_tag(
+@@ -3661,7 +3681,7 @@ def _new_group_with_tag(
          # MPI backend doesn't have have a way for us to perform a partial sync
          if backend == Backend.MPI:
              raise ValueError("MPI backend doesn't support use_local_synchronization=True")
@@ -1879,7 +1888,7 @@ index 27d7919598f..0f43e59243c 100644
              return None
  
      # checks the input ranks
-@@ -3690,7 +3707,7 @@ def _new_group_with_tag(
+@@ -3690,7 +3710,7 @@ def _new_group_with_tag(
          group_world_size = global_world_size
          group_rank = global_rank
  
@@ -1888,7 +1897,7 @@ index 27d7919598f..0f43e59243c 100644
  
      pg, pg_store = _new_process_group_helper(
          group_world_size,
-@@ -3701,11 +3718,12 @@ def _new_group_with_tag(
+@@ -3701,11 +3721,12 @@ def _new_group_with_tag(
          group_name,
          pg_options=pg_options,
          timeout=timeout,
@@ -1903,7 +1912,7 @@ index 27d7919598f..0f43e59243c 100644
          global_rank: group_rank for group_rank, global_rank in enumerate(ranks)
      }
  
-@@ -3724,10 +3742,10 @@ def _new_group_with_tag(
+@@ -3724,10 +3745,10 @@ def _new_group_with_tag(
          )
          if backend == Backend.MPI:
              # MPI doesn't have store.
@@ -1916,7 +1925,7 @@ index 27d7919598f..0f43e59243c 100644
              # Use store based barrier here since barrier() used a bunch of
              # default devices and messes up NCCL internal state.
              _store_based_barrier(global_rank, barrier_store, group_name, world_size, timeout)
-@@ -3741,6 +3759,7 @@ def new_subgroups(
+@@ -3741,6 +3762,7 @@ def new_subgroups(
      timeout=None,
      backend=None,
      pg_options=None,
@@ -1924,7 +1933,7 @@ index 27d7919598f..0f43e59243c 100644
  ):
      """
      Create subgroups of equal size.
-@@ -3820,7 +3839,7 @@ def new_subgroups(
+@@ -3820,7 +3842,7 @@ def new_subgroups(
      if group_size <= 0:
          raise ValueError(f"The arg 'group_size' ({group_size}) must be positive")
  
@@ -1933,7 +1942,7 @@ index 27d7919598f..0f43e59243c 100644
      if world_size < group_size:
          raise ValueError(f"The arg 'group_size' ({group_size}) must not exceed the world size ({world_size})")
      if world_size % group_size != 0:
-@@ -3838,10 +3857,11 @@ def new_subgroups(
+@@ -3838,10 +3860,11 @@ def new_subgroups(
              timeout=timeout,
              backend=backend,
              pg_options=pg_options,
@@ -1946,7 +1955,7 @@ index 27d7919598f..0f43e59243c 100644
          if rank in ranks_in_subgroup:
              cur_subgroup = subgroup
              logger.info(
-@@ -3857,6 +3877,7 @@ def new_subgroups_by_enumeration(
+@@ -3857,6 +3880,7 @@ def new_subgroups_by_enumeration(
      timeout=None,
      backend=None,
      pg_options=None,
@@ -1954,7 +1963,7 @@ index 27d7919598f..0f43e59243c 100644
  ):
      """
      Create subgroups by dividing the global world.
-@@ -3925,9 +3946,10 @@ def new_subgroups_by_enumeration(
+@@ -3925,9 +3949,10 @@ def new_subgroups_by_enumeration(
              timeout=timeout,
              backend=backend,
              pg_options=pg_options,
@@ -1966,7 +1975,7 @@ index 27d7919598f..0f43e59243c 100644
          for rank in ranks:
              if rank in rank_to_ranks_dict:
                  raise ValueError(
-@@ -3941,24 +3963,24 @@ def new_subgroups_by_enumeration(
+@@ -3941,24 +3966,24 @@ def new_subgroups_by_enumeration(
      return cur_subgroup, subgroups
  
  
@@ -1996,7 +2005,7 @@ index 27d7919598f..0f43e59243c 100644
      my_ranks = None
  
      if stride == len(ranks):
-@@ -3973,26 +3995,26 @@ def _find_or_create_pg_by_ranks_and_tag(tag: str, ranks: List[int], stride: int)
+@@ -3973,26 +3998,26 @@ def _find_or_create_pg_by_ranks_and_tag(tag: str, ranks: List[int], stride: int)
  
      my_ranks.sort()
  
