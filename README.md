@@ -64,20 +64,11 @@ To install the package from source,
 pip install .
 ```
 
-### Step 2: Run post installation script with patch file
+### Step 2: Run post installation script
 
 ```bash
-m8d-post-setup <path_to_patch_file>
+m8d-post-setup
 ```
-
-Patch files exist under `patch` folder.
-Example:
-
-```bash
-m8d-post-setup patch/pytorch-v2.2.1.patch
-```
-
-The version (v2.2.1) must match the installed pytorch version.
 
 ## Running Examples
 
