@@ -29,5 +29,8 @@ dev = [
 [tool.setuptools]
 packages=["multiworld"]
 
+[tool.setuptools.package-data]
+"multiworld" = ["patch/*.patch"]
+
 [tool.setuptools.dynamic]
 version = {attr = "multiworld.__version__"}
