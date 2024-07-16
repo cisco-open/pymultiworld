@@ -151,6 +151,20 @@ pydoc multiworld/world_manager.py
 
 If you wish to contribute or suggest any additional funtionalities, please check out [Contributing Guidelines](/CONTRIBUTING.md)
 
+## Citation
+
+```text
+@misc{m8d2024,
+      title={Enabling Elastic Model Serving with MultiWorld}, 
+      author={Myungjin Lee and Akshay Jajoo and Ramana Rao Kompella},
+      year={2024},
+      eprint={2407.08980},
+      archivePrefix={arXiv},
+      primaryClass={cs.DC},
+      url={https://arxiv.org/abs/2407.08980}, 
+}
+```
+
 ## License
 
 [Apache License 2.0](LICENSE).
