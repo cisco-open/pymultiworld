@@ -281,7 +281,7 @@ async def run_leader(world_communicator, world_size, backend):
             # Send the image to the worker
             try:
                 await world_communicator.send(
-                    image_tensor, f"world{worker_idx}", WORKER_RANK
+                    image_tensor, WORKER_RANK, f"world{worker_idx}"
                 )
             except Exception as e:
                 print(f"Caught an except while sending image: {e}")
@@ -298,7 +298,7 @@ async def run_leader(world_communicator, world_size, backend):
             )
             try:
                 await world_communicator.recv(
-                    predicted_class_tensor, f"world{worker_idx}", WORKER_RANK
+                    predicted_class_tensor, WORKER_RANK, f"world{worker_idx}"
                 )
             except Exception as e:
                 print(f"Caught an except while receiving predicted class: {e}")

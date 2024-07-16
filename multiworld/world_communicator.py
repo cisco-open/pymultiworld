@@ -95,7 +95,9 @@ class WorldCommunicator:
                 raise BrokenWorldException(f"{world_name}")
             await asyncio.sleep(0)
 
-    async def send(self, tensor: Tensor, world_name: str, dst: int) -> None:
+    async def send(
+        self, tensor: Tensor, dst: int, world_name: str = dist.DEFAULT_WORLD_NAME
+    ) -> None:
         """Send a tensor to a destination in a world."""
         try:
             work = dist.isend(tensor, dst=dst, name=world_name)
@@ -104,7 +106,9 @@ class WorldCommunicator:
 
         await self._wait_work(work, world_name)
 
-    async def recv(self, tensor: Tensor, world_name: str, src: int) -> None:
+    async def recv(
+        self, tensor: Tensor, src: int, world_name: str = dist.DEFAULT_WORLD_NAME
+    ) -> None:
         """Receive a tensor from a specific rank in a world."""
         try:
             work = dist.irecv(tensor, src=src, name=world_name)
@@ -113,7 +117,9 @@ class WorldCommunicator:
 
         await self._wait_work(work, world_name)
 
-    async def broadcast(self, tensor: Tensor, world_name: str, src: int) -> None:
+    async def broadcast(
+        self, tensor: Tensor, src: int, world_name: str = dist.DEFAULT_WORLD_NAME
+    ) -> None:
         """Broadcast a tensor to the world from a source (src)."""
         try:
             work = dist.broadcast(tensor, src, async_op=True, name=world_name)
@@ -122,29 +128,43 @@ class WorldCommunicator:
 
         await self._wait_work(work, world_name)
 
-    async def all_reduce(self, tensor: Tensor, world_name: str) -> None:
+    async def all_reduce(
+        self,
+        tensor: Tensor,
+        op: dist.ReduceOp = dist.ReduceOp.SUM,
+        world_name: str = dist.DEFAULT_WORLD_NAME,
+    ) -> None:
         """Do all-reduce for a given tensor in a world."""
         try:
-            work = dist.all_reduce(tensor, async_op=True, name=world_name)
+            work = dist.all_reduce(tensor, op, async_op=True, name=world_name)
         except RuntimeError as e:
             self._handle_error(e, world_name)
 
         await self._wait_work(work, world_name)
 
-    async def reduce(self, tensor: Tensor, world_name: str, dst: int) -> None:
+    async def reduce(
+        self,
+        tensor: Tensor,
+        dst: int,
+        op: dist.ReduceOp = dist.ReduceOp.SUM,
+        world_name: str = dist.DEFAULT_WORLD_NAME,
+    ) -> None:
         """Do reduce for a given tensor in a world.
 
         The rank is a receiver of the final result.
         """
         try:
-            work = dist.reduce(tensor, dst, async_op=True, name=world_name)
+            work = dist.reduce(tensor, dst, op, async_op=True, name=world_name)
         except RuntimeError as e:
             self._handle_error(e, world_name)
 
         await self._wait_work(work, world_name)
 
     async def all_gather(
-        self, tensors: list[Tensor], tensor: Tensor, world_name: str
+        self,
+        tensors: list[Tensor],
+        tensor: Tensor,
+        world_name: str = dist.DEFAULT_WORLD_NAME,
     ) -> None:
         """Do all-gather for a given tensor in a world."""
         try:
@@ -157,9 +177,9 @@ class WorldCommunicator:
     async def gather(
         self,
         tensor: Tensor,
-        world_name: str,
-        dst: int,
         gather_list: list[Tensor] = None,
+        dst: int = 0,
+        world_name: str = dist.DEFAULT_WORLD_NAME,
     ) -> None:
         """Do gather for a list of tensors in a world."""
         try:
@@ -178,9 +198,9 @@ class WorldCommunicator:
     async def scatter(
         self,
         tensor: Tensor,
-        world_name: str,
-        src: int,
         scatter_list: list[Tensor] = None,
+        src: int = 0,
+        world_name: str = dist.DEFAULT_WORLD_NAME,
     ) -> None:
         """Do scatter for a list of tensors from a source (src) in a world."""
         try:
