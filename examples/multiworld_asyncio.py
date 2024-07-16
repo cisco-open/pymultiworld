@@ -86,7 +86,7 @@ async def send_data(world_name, rank, size, backend):
         tensor = _prepare_tensor(rank, backend)
 
         try:
-            await world_communicator.send(tensor, world_name, rank_to_send)
+            await world_communicator.send(tensor, rank_to_send, world_name)
         except Exception as e:
             print(f"caught an exception: {e}")
             print("terminate sending")
@@ -114,7 +114,7 @@ async def receive_data(world_communicator, backend, worlds):
             tensor = _prepare_tensor(0, backend)
 
             try:
-                await world_communicator.recv(tensor, world, 1)
+                await world_communicator.recv(tensor, 1, world)
             except Exception as e:
                 print(f"caught an exception: {e}")
                 worlds.remove(world)
