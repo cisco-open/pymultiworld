@@ -30,53 +30,68 @@ Sample usage:
 
 
 import argparse
+import asyncio
 import atexit
 import os
 import time
-import asyncio
 
 import torch
-import torchvision.transforms as transforms
-from torchvision.datasets import CIFAR10
-from torch.utils.data import DataLoader
 import torch.distributed as dist
 import torch.multiprocessing as mp
+import torchvision.transforms as transforms
+from torch.utils.data import DataLoader
+from torchvision.datasets import CIFAR10
 from transformers import AutoModelForImageClassification
-
 
 # Constants
 CIFAR10_INPUT_SIZE = (1, 3, 32, 32)
 
 # CIFAR10 class names
-CIFAR10_CLASS_NAMES = ['plane', 'car', 'bird', 'cat',
-    'deer', 'dog', 'frog', 'horse', 'ship', 'truck']
+CIFAR10_CLASS_NAMES = [
+    "plane",
+    "car",
+    "bird",
+    "cat",
+    "deer",
+    "dog",
+    "frog",
+    "horse",
+    "ship",
+    "truck",
+]
 
 # leader rank
 LEADER_RANK = 0
 # Worker rank in every world is going to be 1 because we are creating 2 processes in every world
 WORKER_RANK = 1
 
+
 def index_to_class_name(index):
     """
     Get class name from index.
-    
+
     Args:
         index (int): Index of the class.
     """
     return CIFAR10_CLASS_NAMES[index]
 
+
 def load_cifar10(batch_size=1):
     """
     Load CIFAR10 dataset.
-    
+
     Args:
         batch_size (int): Batch size for the DataLoader.
     """
-    transform = transforms.Compose([
-        transforms.ToTensor(),
-        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
-    ])
-    cifar10_dataset = CIFAR10(root='./data', train=False, download=True, transform=transform)
+    transform = transforms.Compose(
+        [
+            transforms.ToTensor(),
+            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
+        ]
+    )
+    cifar10_dataset = CIFAR10(
+        root="./data", train=False, download=True, transform=transform
+    )
     cifar10_loader = DataLoader(cifar10_dataset, batch_size=batch_size, shuffle=True)
     return cifar10_loader
 
@@ -108,7 +123,9 @@ def run(world_name, rank, size, backend):
     world_idx = int(world_name[5:])
 
     # Initialize ResNet18 model
-    model = AutoModelForImageClassification.from_pretrained("jialicheng/resnet-18-cifar10-21")
+    model = AutoModelForImageClassification.from_pretrained(
+        "jialicheng/resnet-18-cifar10-21"
+    )
     model.eval()
 
     if backend == "nccl":
@@ -116,8 +133,10 @@ def run(world_name, rank, size, backend):
 
     while True:
         image_tensor = torch.zeros(CIFAR10_INPUT_SIZE)
-        image_tensor = image_tensor.to(f"cuda:{world_idx}") if backend == "nccl" else image_tensor
-        
+        image_tensor = (
+            image_tensor.to(f"cuda:{world_idx}") if backend == "nccl" else image_tensor
+        )
+
         dist.recv(image_tensor, src=LEADER_RANK)
 
         # Inference
@@ -139,10 +158,12 @@ world_manager = None
 STARTING_PORT = 29500
 
 
-async def init_world(world_name, rank, size, fn, backend="gloo", addr="127.0.0.1", port=-1):
+async def init_world(
+    world_name, rank, size, fn, backend="gloo", addr="127.0.0.1", port=-1
+):
     """
     Initialize the distributed environment.
-    
+
     Args:
         world_name (str): Name of the world.
         rank (int): Rank of the process.
@@ -165,7 +186,9 @@ async def init_world(world_name, rank, size, fn, backend="gloo", addr="127.0.0.1
     fn(world_name, rank, size, backend)
 
 
-def run_init_world(world_name, rank, size, fn, backend="gloo", addr="127.0.0.1", port=-1):
+def run_init_world(
+    world_name, rank, size, fn, backend="gloo", addr="127.0.0.1", port=-1
+):
     """
     Run the init_world function in a separate process.
 
@@ -179,6 +202,7 @@ def run_init_world(world_name, rank, size, fn, backend="gloo", addr="127.0.0.1",
         port (int): Port to be used.
     """
     asyncio.run(init_world(world_name, rank, size, fn, backend, addr, port))
+
 
 processes = []
 
@@ -205,7 +229,8 @@ async def create_world(world_name, world_size, addr, port, backend, fn1, fn2):
         if rank == 0:
             continue
         p = mp.Process(
-            target=run_init_world, args=(world_name, rank, world_size, fn1, backend, addr, port)
+            target=run_init_world,
+            args=(world_name, rank, world_size, fn1, backend, addr, port),
         )
         p.start()
         print(p.pid)
@@ -237,11 +262,15 @@ async def run_leader(world_communicator, world_size, backend):
     """
     # Load CIFAR10 dataset
     cifar10_loader = load_cifar10()
-    
+
     worker_idx = 1
 
     for _, (image_tensor, _) in enumerate(cifar10_loader):
-        image_tensor = image_tensor.to(f"cuda:{LEADER_RANK}") if backend == "nccl" else image_tensor
+        image_tensor = (
+            image_tensor.to(f"cuda:{LEADER_RANK}")
+            if backend == "nccl"
+            else image_tensor
+        )
 
         # Keep trying for different workers until the image is sent
         while True:
@@ -251,7 +280,9 @@ async def run_leader(world_communicator, world_size, backend):
 
             # Send the image to the worker
             try:
-                await world_communicator.send(image_tensor, f"world{worker_idx}", WORKER_RANK)
+                await world_communicator.send(
+                    image_tensor, f"world{worker_idx}", WORKER_RANK
+                )
             except Exception as e:
                 print(f"Caught an except while sending image: {e}")
                 continue
@@ -260,14 +291,22 @@ async def run_leader(world_communicator, world_size, backend):
 
             # Receive the predicted class from the worker
             predicted_class_tensor = torch.zeros(size=(1,), dtype=torch.int64)
-            predicted_class_tensor = predicted_class_tensor.to(f"cuda:{LEADER_RANK}") if backend == "nccl" else predicted_class_tensor
+            predicted_class_tensor = (
+                predicted_class_tensor.to(f"cuda:{LEADER_RANK}")
+                if backend == "nccl"
+                else predicted_class_tensor
+            )
             try:
-                await world_communicator.recv(predicted_class_tensor, f"world{worker_idx}", WORKER_RANK)
+                await world_communicator.recv(
+                    predicted_class_tensor, f"world{worker_idx}", WORKER_RANK
+                )
             except Exception as e:
                 print(f"Caught an except while receiving predicted class: {e}")
                 continue
 
-            print(f"Predicted class: {index_to_class_name(predicted_class_tensor.item())}\n")
+            print(
+                f"Predicted class: {index_to_class_name(predicted_class_tensor.item())}\n"
+            )
             break
 
         time.sleep(1)
@@ -285,7 +324,15 @@ async def single_host(args):
     mp.set_start_method("spawn")
 
     for world_idx in range(1, args.num_workers + 1):
-        pset = await create_world(f"world{world_idx}", 2, "127.0.0.1", STARTING_PORT + world_idx, args.backend, run, dummy)
+        pset = await create_world(
+            f"world{world_idx}",
+            2,
+            "127.0.0.1",
+            STARTING_PORT + world_idx,
+            args.backend,
+            run,
+            dummy,
+        )
         processes += pset
 
     await run_leader(world_manager.communicator, args.num_workers, args.backend)
@@ -304,11 +351,27 @@ async def multi_host(args):
     size = int(args.num_workers)
     if args.rank == 0:
         for world_idx in range(1, size + 1):
-            await init_world(f"world{world_idx}", 0, 2, dummy, args.backend, args.addr, STARTING_PORT + world_idx)
+            await init_world(
+                f"world{world_idx}",
+                0,
+                2,
+                dummy,
+                args.backend,
+                args.addr,
+                STARTING_PORT + world_idx,
+            )
 
         await run_leader(world_manager.communicator, size, args.backend)
     else:
-        await init_world(f"world{args.rank}", 1, 2, run, args.backend, args.addr, STARTING_PORT + args.rank)
+        await init_world(
+            f"world{args.rank}",
+            1,
+            2,
+            run,
+            args.backend,
+            args.addr,
+            STARTING_PORT + args.rank,
+        )
 
 
 if __name__ == "__main__":
