@@ -24,6 +24,7 @@ from typing import TYPE_CHECKING
 import torch.distributed as dist
 from torch import Tensor
 from torch.distributed import Work
+from torch.distributed.distributed_c10d import DEFAULT_WORLD_NAME
 
 if TYPE_CHECKING:
     from torch.distributed.world_manager import WorldManager
@@ -96,7 +97,7 @@ class WorldCommunicator:
             await asyncio.sleep(0)
 
     async def send(
-        self, tensor: Tensor, dst: int, world_name: str = dist.DEFAULT_WORLD_NAME
+        self, tensor: Tensor, dst: int, world_name: str = DEFAULT_WORLD_NAME
     ) -> None:
         """Send a tensor to a destination in a world."""
         try:
@@ -107,7 +108,7 @@ class WorldCommunicator:
         await self._wait_work(work, world_name)
 
     async def recv(
-        self, tensor: Tensor, src: int, world_name: str = dist.DEFAULT_WORLD_NAME
+        self, tensor: Tensor, src: int, world_name: str = DEFAULT_WORLD_NAME
     ) -> None:
         """Receive a tensor from a specific rank in a world."""
         try:
@@ -118,7 +119,7 @@ class WorldCommunicator:
         await self._wait_work(work, world_name)
 
     async def broadcast(
-        self, tensor: Tensor, src: int, world_name: str = dist.DEFAULT_WORLD_NAME
+        self, tensor: Tensor, src: int, world_name: str = DEFAULT_WORLD_NAME
     ) -> None:
         """Broadcast a tensor to the world from a source (src)."""
         try:
@@ -132,7 +133,7 @@ class WorldCommunicator:
         self,
         tensor: Tensor,
         op: dist.ReduceOp = dist.ReduceOp.SUM,
-        world_name: str = dist.DEFAULT_WORLD_NAME,
+        world_name: str = DEFAULT_WORLD_NAME,
     ) -> None:
         """Do all-reduce for a given tensor in a world."""
         try:
@@ -147,7 +148,7 @@ class WorldCommunicator:
         tensor: Tensor,
         dst: int,
         op: dist.ReduceOp = dist.ReduceOp.SUM,
-        world_name: str = dist.DEFAULT_WORLD_NAME,
+        world_name: str = DEFAULT_WORLD_NAME,
     ) -> None:
         """Do reduce for a given tensor in a world.
 
@@ -164,7 +165,7 @@ class WorldCommunicator:
         self,
         tensors: list[Tensor],
         tensor: Tensor,
-        world_name: str = dist.DEFAULT_WORLD_NAME,
+        world_name: str = DEFAULT_WORLD_NAME,
     ) -> None:
         """Do all-gather for a given tensor in a world."""
         try:
@@ -179,7 +180,7 @@ class WorldCommunicator:
         tensor: Tensor,
         gather_list: list[Tensor] = None,
         dst: int = 0,
-        world_name: str = dist.DEFAULT_WORLD_NAME,
+        world_name: str = DEFAULT_WORLD_NAME,
     ) -> None:
         """Do gather for a list of tensors in a world."""
         try:
@@ -200,7 +201,7 @@ class WorldCommunicator:
         tensor: Tensor,
         scatter_list: list[Tensor] = None,
         src: int = 0,
-        world_name: str = dist.DEFAULT_WORLD_NAME,
+        world_name: str = DEFAULT_WORLD_NAME,
     ) -> None:
         """Do scatter for a list of tensors from a source (src) in a world."""
         try:
