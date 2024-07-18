@@ -152,10 +152,13 @@ class WorldManager:
         self._communicator.remove_world(world_name)
 
         logger.debug(f"remove {world_name} from world stores")
-        del self._worlds_stores[world_name]
+        try:
+            del self._worlds_stores[world_name]
+        except KeyError:
+            pass
 
         logger.debug(f"destory process group for {world_name}")
-        # FIXME: the following two lindes of code here causes program hang.
+        # FIXME: the following two lines of code here causes program hang.
         #        we need to find out a right timing/way to call them.
         #        calling them is temporarily disabled.
         # dist.destroy_process_group(name=world_name)
