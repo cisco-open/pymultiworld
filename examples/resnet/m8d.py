@@ -15,7 +15,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 """
-resnet_multiworld.py: This script demonstrates how to run a ResNet model on multiple worlds using PyTorch.
+m8d.py: This script demonstrates how to run a ResNet model on multiple worlds using PyTorch.
 
 Summary:
     - The script initializes a ResNet model on every worker.
@@ -23,8 +23,8 @@ Summary:
     - The worker processes the image and sends the predicted class back to the leader.
 
 Sample usage:
-    Single host: python resnet_multiworld.py --num_workers 1 --backend gloo
-    Multi host: python resnet_multiworld.py --num_workers 2 --backend nccl --multihost --addr 10.20.1.50 --rank 0
+    Single host: python m8d.py --num_workers 1 --backend gloo
+    Multi host: python m8d.py --num_workers 2 --backend nccl --multihost --addr 10.20.1.50 --rank 0
 """
 #!/usr/bin/env python
 

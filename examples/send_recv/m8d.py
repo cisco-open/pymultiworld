@@ -15,7 +15,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 """
-multiworld_asyncio.py: This script is a modified version of examples/leader_recv.py.
+m8d.py: This script is a modified version of examples/leader_recv.py.
 It demonstrates how to receive data from multiple worlds in a leader process using asyncio.
 """
 #!/usr/bin/env python
