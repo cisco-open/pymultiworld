@@ -116,7 +116,11 @@ class WatchDog:
 
             if not empty:
                 logger.debug(f"name: {world}, rank: {rank}, world size: {size}")
-                self._myworlds[world] = (store, rank, [WorldStatus()] * size)
+                self._myworlds[world] = (
+                    store,
+                    rank,
+                    [WorldStatus() for i in range(size)],
+                )
 
             # update tick for all the worlds that I belongs to
             broken_worlds = set()
