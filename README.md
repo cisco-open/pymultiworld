@@ -72,7 +72,7 @@ m8d-post-setup
 
 ## Running Examples
 
-* [`multiworld_asyncio.py`](/examples/multiworld_asyncio.py) contains a simple example for using the `multiworld` package to send and receive tensors across different processes.
+* [`m8d.py`](/examples/send_recv/m8d.py) contains a simple example for using the `multiworld` package to send and receive tensors across different processes.
 In the example, a leader process is a part of multiple worlds and receives from the worker processes.
 Script can be run using the following commands.
 
@@ -87,11 +87,11 @@ For example, run the following commands, by changing the IP address (10.20.1.50)
 
 ```bash
 # on terminal window 1
-python multiworld_asyncio.py --backend nccl --worldinfo 1,0 --worldinfo 2,0 --addr 10.20.1.50
+python m8d.py --backend nccl --worldinfo 1,0 --worldinfo 2,0 --addr 10.20.1.50
 # on terminal window 2
-python multiworld_asyncio.py --backend nccl --worldinfo 1,1 --addr 10.20.1.50
+python m8d.py --backend nccl --worldinfo 1,1 --addr 10.20.1.50
 # on terminal window 3
-python multiworld_asyncio.py --backend nccl --worldinfo 2,1 --addr 10.20.1.50
+python m8d.py --backend nccl --worldinfo 2,1 --addr 10.20.1.50
 ```
 
 Here the IP address is the IP address of rank 0. We assume that at least 3 GPUs are available either in a single host or across hosts.
