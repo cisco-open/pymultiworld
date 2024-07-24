@@ -26,6 +26,8 @@ import os
 import torch
 import torch.distributed as dist
 
+NUM_OF_STEPS = 100
+
 
 async def init_world(world_name, rank, size, backend="gloo", addr="127.0.0.1", port=-1):
     """
@@ -58,9 +60,44 @@ def _prepare_tensor(rank, backend):
     return tensor
 
 
-async def all_reduce(world_name, tensor):
+async def all_reduce(world_name, rank, backend):
+    """
+    Perform all_reduce.
+
+    Args:
+        world_name (str): The name of the world
+        rank (int): Rank of the process.
+        backend (str): Backend used for communication.
+    """
     world_communicator = world_manager.communicator
-    await world_communicator.all_reduce(tensor, dist.ReduceOp.SUM, world_name)
+    step = 1
+
+    while step <= NUM_OF_STEPS:
+        tensor = _prepare_tensor(rank, backend)
+
+        print(
+            "BEFORE - rank ",
+            rank,
+            " within world ",
+            world_name,
+            " has tensor ",
+            tensor,
+        )
+
+        await world_communicator.all_reduce(tensor, dist.ReduceOp.SUM, world_name)
+
+        print(
+            "AFTER - rank ",
+            rank,
+            " within world ",
+            world_name,
+            " has tensor ",
+            tensor,
+        )
+
+        print(f"done with step: {step}")
+        await asyncio.sleep(1)
+        step += 1
 
 
 world_manager = None
@@ -73,43 +110,36 @@ async def main(args):
     Args:
         args: Command line arguments.
     """
-    size = 3
+    world_size = 3
     global world_manager
 
     world_manager = dist.WorldManager()
-    world_index, rank = args.worldinfo.split(",")
-    world_index = int(world_index)
-    rank = int(rank)
 
-    assert rank <= 2, "the rank must be <= 2"
+    assert len(args.worldinfo) <= 2, "the number of worldinfo arguments must be <= 2"
 
-    if rank == 0:
+    worlds_ranks = {}
+
+    for item in args.worldinfo:
+        world_index, rank = item.split(",")
+        rank = int(rank)
+        world_index = int(world_index)
+
+        assert rank <= 2, "the rank must be <= 2"
+        assert world_index > 0, "the world index must be greater than 0"
+
+        port = 29500 + world_index * 1000
         world_name = f"world{world_index}"
-        tensor = _prepare_tensor(rank, args.backend)
+        worlds_ranks[world_name] = rank
 
-        print(
-            "BEFORE - Rank ", rank, " within world ", world_name, " has tensor ", tensor
-        )
+        await init_world(world_name, rank, world_size, args.backend, args.addr, port)
 
-        await init_world(world_name, rank, size, args.backend, args.addr, 29500)
-        await all_reduce(world_name, tensor)
+    tasks = []
 
-        print(
-            "AFTER - Rank ", rank, " within world ", world_name, " has tensor ", tensor
-        )
+    for world_name, rank in worlds_ranks.items():
+        t = asyncio.create_task(all_reduce(world_name, rank, args.backend))
+        tasks.append(t)
 
-    else:
-        world_name = f"world{world_index}"
-        tensor = _prepare_tensor(rank, args.backend)
-
-        print(
-            "BEFORE - Rank ", rank, " within world ", world_name, " has tensor ", tensor
-        )
-
-        await init_world(world_name, rank, size, args.backend, args.addr, 29500)
-        await all_reduce(world_name, tensor)
-
-        print("AFTER - Rank ", rank, " has tensor ", tensor)
+    await asyncio.gather(*tasks)
 
     world_manager.cleanup()
 
@@ -118,7 +148,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--backend", default="gloo")
     parser.add_argument("--addr", default="127.0.0.1")
-    parser.add_argument("--worldinfo", type=str)
+    parser.add_argument("--worldinfo", type=str, action="append")
 
     # https://github.com/pytorch/pytorch/blob/main/torch/csrc/distributed/c10d/ProcessGroupNCCL.hpp#L114-L126
     # "2" is CleanUpOnly
