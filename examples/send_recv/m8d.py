@@ -46,6 +46,10 @@ async def init_world(world_name, rank, size, backend="gloo", addr="127.0.0.1", p
     )
 
 
+def _device_no(world_index, rank):
+    return world_index * (world_index - 1) + rank
+
+
 def _prepare_tensor(rank, backend):
     """
     Prepare a tensor for sending.
@@ -64,7 +68,7 @@ def _check_rank(rank):
     assert rank <= 1, "rank error: rank should be 0 or 1."
 
 
-async def send_data(world_name, rank, size, backend):
+async def send_data(world_name, rank, size, backend, device_no):
     """
     Async function to send tensors from the leader process to the other process.
 
@@ -73,6 +77,7 @@ async def send_data(world_name, rank, size, backend):
         rank (int): Rank of the process.
         size (int): Number of processes.
         backend (str): Backend used for communication.
+        device_no (int): index for cuda device
     """
     world_communicator = world_manager.communicator
 
@@ -83,7 +88,7 @@ async def send_data(world_name, rank, size, backend):
 
         time.sleep(1)
 
-        tensor = _prepare_tensor(rank, backend)
+        tensor = _prepare_tensor(device_no, backend)
 
         try:
             await world_communicator.send(tensor, rank_to_send, world_name)
@@ -100,24 +105,27 @@ async def send_data(world_name, rank, size, backend):
 world_manager = None
 
 
-async def receive_data(world_communicator, backend, worlds):
+async def receive_data(world_communicator, backend, worlds_ranks, device_no):
     """
     Async function to receive data from multiple worlds in a leader process.
 
     Args:
         world_communicator: World communicator
         backend: Backend to use for distributed communication
+        worlds_ranks: a dictionary that maps world to rank
+        device_no (int): index for cuda device
     """
+    while len(worlds_ranks):
+        for world, rank in list(worlds_ranks.items()):
+            rank_to_recv = 1 if rank == 0 else 0
 
-    while len(worlds):
-        for world in worlds:
-            tensor = _prepare_tensor(0, backend)
+            tensor = _prepare_tensor(device_no, backend)
 
             try:
-                await world_communicator.recv(tensor, 1, world)
+                await world_communicator.recv(tensor, rank_to_recv, world)
             except Exception as e:
                 print(f"caught an exception: {e}")
-                worlds.remove(world)
+                del worlds_ranks[world]
                 # time.sleep(1)
                 continue
 
@@ -138,27 +146,33 @@ async def main(args):
 
     assert len(args.worldinfo) <= 2, "the number of worldinfo arguments must be <= 2"
 
+    device_no = 0
     if len(args.worldinfo) > 1:
-        worlds = []
+        worlds_ranks = {}
+
         for item in args.worldinfo:
             world_index, rank = item.split(",")
             rank = int(rank)
             world_index = int(world_index)
+            device_no = _device_no(world_index, rank)
 
             _check_rank(rank)
 
             port = 29500 + world_index * 1000
             world_name = f"world{world_index}"
-            worlds.append(world_name)
+            worlds_ranks[world_name] = rank
 
             await init_world(world_name, rank, size, args.backend, args.addr, port)
 
-        await receive_data(world_manager.communicator, args.backend, worlds)
+        await receive_data(
+            world_manager.communicator, args.backend, worlds_ranks, device_no
+        )
 
     else:
         world_index, rank = args.worldinfo[0].split(",")
         rank = int(rank)
         world_index = int(world_index)
+        device_no = _device_no(world_index, rank)
 
         _check_rank(rank)
 
@@ -166,7 +180,7 @@ async def main(args):
         world_name = f"world{world_index}"
 
         await init_world(world_name, rank, size, args.backend, args.addr, port)
-        await send_data(world_name, rank, size, args.backend)
+        await send_data(world_name, rank, size, args.backend, device_no)
 
     world_manager.cleanup()
 
