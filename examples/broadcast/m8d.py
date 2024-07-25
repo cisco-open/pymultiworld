@@ -116,15 +116,32 @@ async def main(args):
     global world_manager
 
     world_manager = dist.WorldManager()
-    world_index, rank = args.worldinfo.split(",")
-    world_index = int(world_index)
-    rank = int(rank)
-    world_name = f"world{world_index}"
 
-    assert rank <= 2, "the rank must be <= 2"
+    assert len(args.worldinfo) <= 2, "the number of worldinfo arguments must be <= 2"
 
-    await init_world(world_name, rank, world_size, args.backend, args.addr, 29500)
-    await broadcast(world_name, world_size, rank, args.backend)
+    worlds_ranks = {}
+
+    for item in args.worldinfo:
+        world_index, rank = item.split(",")
+        rank = int(rank)
+        world_index = int(world_index)
+
+        assert rank <= 2, "the rank must be <= 2"
+        assert world_index > 0, "the world index must be greater than 0"
+
+        port = 29500 + world_index * 1000
+        world_name = f"world{world_index}"
+        worlds_ranks[world_name] = rank
+
+        await init_world(world_name, rank, world_size, args.backend, args.addr, port)
+
+    tasks = []
+
+    for world_name, rank in worlds_ranks.items():
+        t = asyncio.create_task(broadcast(world_name, world_size, rank, args.backend))
+        tasks.append(t)
+
+    await asyncio.gather(*tasks)
 
     world_manager.cleanup()
 
@@ -135,7 +152,7 @@ if __name__ == "__main__":
     parser.add_argument("--addr", default="127.0.0.1")
     # --worldinfo argument is composed by the world index and the rank of the worker in that world.
     # for example: --worldinfo 1,0` means world with the index 1 will have a rank 0
-    parser.add_argument("--worldinfo", type=str)
+    parser.add_argument("--worldinfo", type=str, action="append")
 
     # https://github.com/pytorch/pytorch/blob/main/torch/csrc/distributed/c10d/ProcessGroupNCCL.hpp#L114-L126
     # "2" is CleanUpOnly
