@@ -11,3 +11,4 @@ The list of available examples can be found here:
 ## Collective Communication
 
 * [`all_reduce`](all_reduce) This script demonstrates a case where all_reduce on tensors are executed for different worlds, without any interference across different worlds.
+* [`all_gather`](all_gather) This script demonstrates a case where all_gather on tensors are executed for different worlds, without any interference across different worlds.
