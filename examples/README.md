@@ -13,3 +13,4 @@ The list of available examples can be found here:
 * [`all_reduce`](all_reduce) This script demonstrates a case where all_reduce on tensors are executed for different worlds, without any interference across different worlds.
 * [`all_gather`](all_gather) This script demonstrates a case where all_gather on tensors are executed for different worlds, without any interference across different worlds.
 * [`broadcast`](broadcast) This script demonstrates a case where broadcast is executed for different worlds, without any interference across different worlds, with a different src on each step.
+* [`reduce`](reduce) This script demonstrates a case where reduce is executed for different worlds, on a different destination rank, without any interference across different worlds
