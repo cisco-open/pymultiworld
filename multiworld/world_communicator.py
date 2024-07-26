@@ -18,6 +18,7 @@
 from __future__ import annotations
 
 import asyncio
+import concurrent.futures
 import logging
 from typing import TYPE_CHECKING
 
@@ -33,22 +34,24 @@ logger = logging.getLogger(__name__)
 
 
 _errors_to_handle = [
-    "Connection closed by peer",
-    "Connection reset by peer",
+    "NCCL Error 6",
     "NCCL communicator was aborted",
+    "Connection reset by peer",
+    "Connection closed by peer",
 ]
 
 
 class BrokenWorldException(Exception):
     """Raise this exception when world is broken."""
 
-    def __init__(self, world_name: str):
+    def __init__(self, world_name: str, msg: str):
         """Initialize exception instance."""
         self._world_name = world_name
+        self._msg = msg
 
     def __str__(self):
         """Return exception string."""
-        return f"broken world: {self._world_name}"
+        return f"{self._world_name} broken: {self._msg}"
 
     pass
 
@@ -93,7 +96,7 @@ class WorldCommunicator:
         """
         while not work.is_completed():
             if self._broken_world[world_name]:
-                raise BrokenWorldException(f"{world_name}")
+                raise BrokenWorldException(world_name, "watchdog raised the exception")
             await asyncio.sleep(0)
 
     async def send(
@@ -101,7 +104,16 @@ class WorldCommunicator:
     ) -> None:
         """Send a tensor to a destination in a world."""
         try:
-            work = dist.isend(tensor, dst=dst, name=world_name)
+            with concurrent.futures.ThreadPoolExecutor() as pool:
+                work = await self._loop.run_in_executor(
+                    pool,
+                    dist.isend,
+                    tensor,
+                    dst,
+                    None,
+                    0,
+                    world_name,
+                )
         except RuntimeError as e:
             self._handle_error(e, world_name)
 
@@ -112,7 +124,16 @@ class WorldCommunicator:
     ) -> None:
         """Receive a tensor from a specific rank in a world."""
         try:
-            work = dist.irecv(tensor, src=src, name=world_name)
+            with concurrent.futures.ThreadPoolExecutor() as pool:
+                work = await self._loop.run_in_executor(
+                    pool,
+                    dist.irecv,
+                    tensor,
+                    src,
+                    None,
+                    0,
+                    world_name,
+                )
         except RuntimeError as e:
             self._handle_error(e, world_name)
 
@@ -123,7 +144,16 @@ class WorldCommunicator:
     ) -> None:
         """Broadcast a tensor to the world from a source (src)."""
         try:
-            work = dist.broadcast(tensor, src, async_op=True, name=world_name)
+            with concurrent.futures.ThreadPoolExecutor() as pool:
+                work = await self._loop.run_in_executor(
+                    pool,
+                    dist.broadcast,
+                    tensor,
+                    src,
+                    None,
+                    True,
+                    world_name,
+                )
         except RuntimeError as e:
             self._handle_error(e, world_name)
 
@@ -137,7 +167,16 @@ class WorldCommunicator:
     ) -> None:
         """Do all-reduce for a given tensor in a world."""
         try:
-            work = dist.all_reduce(tensor, op, async_op=True, name=world_name)
+            with concurrent.futures.ThreadPoolExecutor() as pool:
+                work = await self._loop.run_in_executor(
+                    pool,
+                    dist.all_reduce,
+                    tensor,
+                    op,
+                    None,
+                    True,
+                    world_name,
+                )
         except RuntimeError as e:
             self._handle_error(e, world_name)
 
@@ -155,7 +194,17 @@ class WorldCommunicator:
         The rank is a receiver of the final result.
         """
         try:
-            work = dist.reduce(tensor, dst, op, async_op=True, name=world_name)
+            with concurrent.futures.ThreadPoolExecutor() as pool:
+                work = await self._loop.run_in_executor(
+                    pool,
+                    dist.reduce,
+                    tensor,
+                    dst,
+                    op,
+                    None,
+                    True,
+                    world_name,
+                )
         except RuntimeError as e:
             self._handle_error(e, world_name)
 
@@ -169,7 +218,16 @@ class WorldCommunicator:
     ) -> None:
         """Do all-gather for a given tensor in a world."""
         try:
-            work = dist.all_gather(tensors, tensor, async_op=True, name=world_name)
+            with concurrent.futures.ThreadPoolExecutor() as pool:
+                work = await self._loop.run_in_executor(
+                    pool,
+                    dist.all_gather,
+                    tensors,
+                    tensor,
+                    None,
+                    True,
+                    world_name,
+                )
         except RuntimeError as e:
             self._handle_error(e, world_name)
 
@@ -184,13 +242,17 @@ class WorldCommunicator:
     ) -> None:
         """Do gather for a list of tensors in a world."""
         try:
-            work = dist.gather(
-                tensor,
-                gahter_list=gather_list,
-                dst=dst,
-                async_op=True,
-                name=world_name,
-            )
+            with concurrent.futures.ThreadPoolExecutor() as pool:
+                work = await self._loop.run_in_executor(
+                    pool,
+                    dist.gather,
+                    tensor,
+                    gather_list,
+                    dst,
+                    None,
+                    True,
+                    world_name,
+                )
         except RuntimeError as e:
             self._handle_error(e, world_name)
 
@@ -205,13 +267,17 @@ class WorldCommunicator:
     ) -> None:
         """Do scatter for a list of tensors from a source (src) in a world."""
         try:
-            work = dist.scatter(
-                tensor,
-                scatter_list=scatter_list,
-                src=src,
-                async_op=True,
-                name=world_name,
-            )
+            with concurrent.futures.ThreadPoolExecutor() as pool:
+                work = await self._loop.run_in_executor(
+                    pool,
+                    dist.scatter,
+                    tensor,
+                    scatter_list,
+                    src,
+                    None,
+                    True,
+                    world_name,
+                )
         except RuntimeError as e:
             self._handle_error(e, world_name)
 
@@ -224,6 +290,6 @@ class WorldCommunicator:
             if error_snippet in error_message:
                 logger.debug(f"broken world: {error_message}")
                 self._world_manager.remove_world(world_name)
-                raise BrokenWorldException(f"{world_name}")
+                raise BrokenWorldException(world_name, error_message)
 
         raise error
