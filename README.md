@@ -38,15 +38,7 @@ The framework is built on top of PyTorch, a widely-used deep learning framework,
 
 ## Dependencies and Version
 
-* [PyTorch](https://pytorch.org/get-started/previous-versions/#v221) version: `2.2.1`
-
-## Prerequisites
-
-* Install [anaconda](www.anaconda.com/download/) or [miniconda](https://docs.conda.io/en/latest/miniconda.html) in order to create the environment.
-* Clone repo (you could use `git clone https://github.com/cisco-open/pymultiworld.git`).
-* This prerequiste is only for testing a fault tolerance functionality across hosts.
-  * To test the functionality **in a single machine**, this step can be skipped. Do the remaining installation steps from [here](#installation).
-  * Too run the test **across hosts**, a custom-built PyTorch is necessary. Follow instructions in this [doc](docs/pytorch_build.md). Details on why to build a custom PyTorch are found in the doc too.
+* [PyTorch](https://pypi.org/project/torch/2.4.0/) version: `2.4.0`
 
 ## Installation
 
