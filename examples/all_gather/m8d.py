@@ -159,10 +159,6 @@ if __name__ == "__main__":
     # for example: --worldinfo 1,0` means world with the index 1 will have a rank 0
     parser.add_argument("--worldinfo", type=str, action="append")
 
-    # https://github.com/pytorch/pytorch/blob/main/torch/csrc/distributed/c10d/ProcessGroupNCCL.hpp#L114-L126
-    # "2" is CleanUpOnly
-    os.environ["TORCH_NCCL_ASYNC_ERROR_HANDLING"] = "2"
-
     args = parser.parse_args()
 
     loop = asyncio.get_event_loop()

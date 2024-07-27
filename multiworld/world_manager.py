@@ -38,6 +38,12 @@ class WorldManager:
 
     def __init__(self, enable_monitor=True):
         """Initialize a world manager."""
+        # https://github.com/pytorch/pytorch/blob/v2.4.0/torch/csrc/distributed/c10d/ProcessGroupNCCL.hpp#L118-L130
+        # "2" is CleanUpOnly
+        # We use CleanupOnly in order to allow error handling at user process
+        # level without tearing down the process.
+        os.environ["TORCH_NCCL_ASYNC_ERROR_HANDLING"] = "2"
+
         self._worlds_stores: dict[str, dist.TCPStore] = dict()
         self._communicator = WorldCommunicator(self)
         self._current_world = ""
