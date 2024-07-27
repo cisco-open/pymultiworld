@@ -95,7 +95,12 @@ async def reduce(world_name, world_size, rank, backend):
 
         if dst == rank:
             print(
-                "Rank ", rank, " within world ", world_name, " has reduced tensor", tensor
+                "Rank ",
+                rank,
+                " within world ",
+                world_name,
+                " has reduced tensor",
+                tensor,
             )
 
         print(f"done with step: {step}")
@@ -153,10 +158,6 @@ if __name__ == "__main__":
     parser.add_argument("--backend", default="gloo")
     parser.add_argument("--addr", default="127.0.0.1")
     parser.add_argument("--worldinfo", type=str, action="append")
-
-    # https://github.com/pytorch/pytorch/blob/main/torch/csrc/distributed/c10d/ProcessGroupNCCL.hpp#L114-L126
-    # "2" is CleanUpOnly
-    os.environ["TORCH_NCCL_ASYNC_ERROR_HANDLING"] = "2"
 
     args = parser.parse_args()
 

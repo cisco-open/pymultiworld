@@ -384,10 +384,6 @@ if __name__ == "__main__":
         "--multihost", action=argparse.BooleanOptionalAction, default=False
     )
 
-    # https://github.com/pytorch/pytorch/blob/main/torch/csrc/distributed/c10d/ProcessGroupNCCL.hpp#L114-L126
-    # "2" is CleanUpOnly
-    os.environ["TORCH_NCCL_ASYNC_ERROR_HANDLING"] = "2"
-
     args = parser.parse_args()
     atexit.register(cleanup)
 
