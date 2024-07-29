@@ -19,7 +19,7 @@ python m8d.py --backend nccl --worldinfo 1,2
 
 ## Running the Script in Multiple Worlds
 
-The multiple world examplecan be executed by opening 5 separate terminal windows to have 5 different processes and running the following commands in each terminal window:
+The multiple world example can be executed by opening 5 separate terminal windows to have 5 different processes and running the following commands in each terminal window:
 
 ```bash
 # on terminal window 1 - will initialize 2 worlds (world1 and world2) with rank 0
