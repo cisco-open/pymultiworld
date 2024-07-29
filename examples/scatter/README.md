@@ -1,6 +1,6 @@
-# Reduce
+# All Gather
 
-This file provides an example of collective communication using reduce across single and multiple worlds. This exaplme will perform reduce 100 times on each rank from each world using a destination rank from a range from 0 to 2.
+This file provides an example of collective communication using scatter across single and multiple worlds. This exaplme will perform scatter 100 times with different source on each step. There are logs to indincate how the tensors are scatterd from the source rank to the other ranks in the world.
 
 `--worldinfo` argument is composed by the world index(1, 2) and the rank in that world (0, 1 or 2).
 
