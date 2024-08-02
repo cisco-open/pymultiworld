@@ -21,7 +21,6 @@ execute a broadcast of tensor from a src rank.
 
 import argparse
 import asyncio
-import os
 
 import torch
 import torch.distributed as dist
@@ -79,26 +78,21 @@ async def broadcast(world_name, world_size, rank, backend):
 
     while step <= NUM_OF_STEPS:
         tensor = _prepare_tensor(world_size, rank, backend)
-        src = step % world_size
+        if rank == 0:
+            print(f"rank: 0 has tensor to be broadcast: {tensor}")
 
-        print(
-            "Rank ",
-            rank,
-            " within world ",
-            world_name,
-            " recieves tensor",
-            tensor,
-            "from rank: ",
-            src,
-        )
+        try:
+            await world_communicator.broadcast(tensor, 0, world_name)
+        except Exception as e:
+            print(f"caught an exception: {e}")
+            break
 
-        await world_communicator.broadcast(tensor, src, world_name)
-
-        print("Rank ", rank, " within world ", world_name, " recieves tensor", tensor)
+        if rank != 0:
+            print(f"rank: {rank} from {world_name} recieves tensor: {tensor}")
 
         print(f"done with step: {step}")
 
-        await asyncio.sleep(2)
+        await asyncio.sleep(1)
         step += 1
 
 
