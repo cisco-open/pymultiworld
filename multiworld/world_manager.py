@@ -57,7 +57,17 @@ class WorldManager:
             _ = asyncio.create_task(self._cleanup_worlds())
 
     def cleanup(self):
-        """Call os._exit(0) explicitly."""
+        """
+        Clean up world manager and terminate the process.
+
+        Note: two tasks are executed.
+            1) Flush out the buffered output of print function to stdout
+            2) Terminate the process by calling os._exit(0)
+
+        Calling os._exit(0) ensures termination of the process. This is a workaround
+        to prevent the main thread hang after its work is over. Therefore, in the user
+        application, no additional code will be executed after calling this function.
+        """
         # TODO: This is a temporary workaround to prevent main thread hang
         #       even after it's done. Calling os._exit(0) guarantees
         #       terminationof the process. We need to figure out why
@@ -118,7 +128,17 @@ class WorldManager:
         addr: str = "127.0.0.1",
         port: int = -1,
     ):
-        """Initialize world."""
+        """
+        Initialize a world for a given rank using world name, backend, port number and address.
+
+        Args:
+            world_name: Name of the world.
+            rank: Rank of the current process (it should be a number between 0 and ``world_size``-1).
+            world_size: the number of processes participating in the world.
+            backend: Backend used for communication; nccl and gloo are supported currently.
+            addr: host name or IP address.
+            port: Port number.
+        """
         self.add_world(world_name)
 
         loop = asyncio.get_running_loop()
