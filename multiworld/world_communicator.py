@@ -76,17 +76,31 @@ class WorldCommunicator:
         """Cleanup the class instance."""
         del self._broken_world
 
-    def add_world(self, world_name):
+    def add_world(self, world_name) -> None:
         """Add a new world to the world comm manager."""
         self._broken_world[world_name] = False
 
-    def remove_world(self, world_name):
+    def remove_world(self, world_name) -> None:
         """Remove a world from the world comm manager."""
         logger.debug(f"remove world {world_name}")
         try:
             self._broken_world[world_name] = True
         except KeyError:
             pass
+
+    def is_broken(self, world_name: str) -> bool:
+        """Return true if the given world is broken; otherwise return false.
+
+        A world is considered broken if no key for the world name is found.
+
+        Args:
+            world_name: name of world
+
+        Returns:
+            A boolean value to indicate whether a world is broken or not.
+        """
+        logger.debug(f"check if world {world_name} is broken")
+        return self._broken_world.get(world_name, True)
 
     async def _wait_work(self, work: Work, world_name: str) -> None:
         """Do busy-waiting for work to be done.
