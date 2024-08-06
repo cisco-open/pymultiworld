@@ -21,7 +21,6 @@ execute a reduce on tensor for a rank in the world.
 
 import argparse
 import asyncio
-import os
 
 import torch
 import torch.distributed as dist
@@ -78,30 +77,17 @@ async def reduce(world_name, world_size, rank, backend):
 
     while step <= NUM_OF_STEPS:
         tensor = _prepare_tensor(world_size, rank, backend)
-        dst = step % world_size
 
-        print(
-            "Rank ",
-            rank,
-            " within world ",
-            world_name,
-            " has tensor",
-            tensor,
-            " sends tensor to rank: ",
-            dst,
-        )
+        print(f"rank: {rank} has tensor to be reduced: {tensor}")
 
-        await world_communicator.reduce(tensor, dst, dist.ReduceOp.SUM, world_name)
+        try:
+            await world_communicator.reduce(tensor, 0, dist.ReduceOp.SUM, world_name)
+        except Exception as e:
+            print(f"caught an exception: {e}")
+            break
 
-        if dst == rank:
-            print(
-                "Rank ",
-                rank,
-                " within world ",
-                world_name,
-                " has reduced tensor",
-                tensor,
-            )
+        if rank == 0:
+            print(f"rank: 0 from {world_name} has reduced tensor: {tensor}")
 
         print(f"done with step: {step}")
 
@@ -157,6 +143,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--backend", default="gloo")
     parser.add_argument("--addr", default="127.0.0.1")
+    # --worldinfo argument is composed by the world index and the rank of the worker in that world.
+    # for example: --worldinfo 1,0` means world with the index 1 will have a rank 0
     parser.add_argument("--worldinfo", type=str, action="append")
 
     args = parser.parse_args()

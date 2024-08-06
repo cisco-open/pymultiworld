@@ -21,7 +21,6 @@ execute an all_reduce on tensors for each rank in a world.
 
 import argparse
 import asyncio
-import os
 
 import torch
 import torch.distributed as dist
@@ -75,25 +74,15 @@ async def all_reduce(world_name, rank, backend):
     while step <= NUM_OF_STEPS:
         tensor = _prepare_tensor(rank, backend)
 
-        print(
-            "BEFORE - rank ",
-            rank,
-            " within world ",
-            world_name,
-            " has tensor ",
-            tensor,
-        )
+        print(f"rank: {rank} has tensor: {tensor}")
 
-        await world_communicator.all_reduce(tensor, dist.ReduceOp.SUM, world_name)
+        try:
+            await world_communicator.all_reduce(tensor, dist.ReduceOp.SUM, world_name)
+        except Exception as e:
+            print(f"caught an exception: {e}")
+            break
 
-        print(
-            "AFTER - rank ",
-            rank,
-            " within world ",
-            world_name,
-            " has tensor ",
-            tensor,
-        )
+        print(f"rank: {rank} from {world_name} has reduced tensor: {tensor}")
 
         print(f"done with step: {step}")
         await asyncio.sleep(1)
@@ -148,6 +137,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--backend", default="gloo")
     parser.add_argument("--addr", default="127.0.0.1")
+    # --worldinfo argument is composed by the world index and the rank of the worker in that world.
+    # for example: --worldinfo 1,0` means world with the index 1 will have a rank 0
     parser.add_argument("--worldinfo", type=str, action="append")
 
     args = parser.parse_args()

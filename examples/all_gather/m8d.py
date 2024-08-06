@@ -21,7 +21,6 @@ execute an all_gather on tensors for each rank in a world.
 
 import argparse
 import asyncio
-import os
 
 import torch
 import torch.distributed as dist
@@ -86,20 +85,15 @@ async def all_gather(world_name, world_size, rank, backend):
     while step <= NUM_OF_STEPS:
         tensors, tensor = _prepare_tensors(world_size, rank, backend)
 
-        print(
-            "BEFORE - Rank ", rank, " within world ", world_name, " has tensor ", tensor
-        )
+        print(f"rank: {rank} has tensor: {tensor}")
 
-        await world_communicator.all_gather(tensors, tensor, world_name)
+        try:
+            await world_communicator.all_gather(tensors, tensor, world_name)
+        except Exception as e:
+            print(f"caught an exception: {e}")
+            break
 
-        print(
-            "AFTER - Rank ",
-            rank,
-            " within world ",
-            world_name,
-            " has tensors ",
-            tensors,
-        )
+        print(f"rank: {rank} from {world_name} has gathered tensors: {tensors}")
 
         print(f"done with step: {step}")
 

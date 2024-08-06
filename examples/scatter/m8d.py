@@ -21,12 +21,11 @@ execute scatter on tensors for each rank in a world.
 
 import argparse
 import asyncio
-import os
 
 import torch
 import torch.distributed as dist
 
-NUM_OF_STEPS = 5
+NUM_OF_STEPS = 100
 
 
 async def init_world(world_name, rank, size, backend="gloo", addr="127.0.0.1", port=-1):
@@ -82,33 +81,20 @@ async def scatter(world_name, world_size, rank, backend):
 
     while step <= NUM_OF_STEPS:
         tensors, tensor = _prepare_tensors(world_size, rank, backend)
-        src = step % world_size
 
-        if rank == src:
-            print(
-                "Rank ",
-                rank,
-                " within world ",
-                world_name,
-                " scatter tensors ",
-                tensors,
+        if rank == 0:
+            print(f"rank: 0 from {world_name} scatters tensors: {tensors}")
+
+        try:
+            await world_communicator.scatter(
+                tensor, tensors if rank == 0 else None, 0, world_name
             )
+        except Exception as e:
+            print(f"caught an exception: {e}")
+            break
 
-        await world_communicator.scatter(
-            tensor, tensors if rank == src else None, src, world_name
-        )
-
-        if rank != src:
-            print(
-                "Rank ",
-                rank,
-                " within world ",
-                world_name,
-                " has recieved tensor ",
-                tensor,
-                " from rank ",
-                src,
-            )
+        if rank != 0:
+            print(f"rank: {rank} from {world_name} has tensor: {tensor}")
 
         print(f"done with step: {step}")
 
