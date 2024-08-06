@@ -116,7 +116,18 @@ class WorldCommunicator:
     async def send(
         self, tensor: Tensor, dst: int, world_name: str = DEFAULT_WORLD_NAME
     ) -> None:
-        """Send a tensor to a destination in a world."""
+        """
+        Send a tensor to a destination in a world.
+
+        Args:
+            tensor: Tensor to be sent.
+            dst: Destination rank from the world.
+            world_name: Name of the world.
+
+        Raises:
+            BrokenWorldException: An error that occurs when
+                the world is broken due to worker, node or network failure.
+        """
         try:
             with concurrent.futures.ThreadPoolExecutor() as pool:
                 work = await self._loop.run_in_executor(
@@ -136,7 +147,18 @@ class WorldCommunicator:
     async def recv(
         self, tensor: Tensor, src: int, world_name: str = DEFAULT_WORLD_NAME
     ) -> None:
-        """Receive a tensor from a specific rank in a world."""
+        """
+        Receive a tensor from a specific rank in a world.
+
+        Args:
+            tensor: Tensor to store received data.
+            src: Source rank.
+            world_name: Name of the world.
+
+        Raises:
+            BrokenWorldException: An error that occurs when
+                the world is broken due to worker, node or network failure.
+        """
         try:
             with concurrent.futures.ThreadPoolExecutor() as pool:
                 work = await self._loop.run_in_executor(
@@ -156,7 +178,18 @@ class WorldCommunicator:
     async def broadcast(
         self, tensor: Tensor, src: int, world_name: str = DEFAULT_WORLD_NAME
     ) -> None:
-        """Broadcast a tensor to the world from a source (src)."""
+        """
+        Broadcast a tensor from a source (src) to all other ranks in the same world.
+
+        Args:
+            tensor: Tensor to be broadcast.
+            src: Source of the broadcast.
+            world_name: Name of the world.
+
+        Raises:
+            BrokenWorldException: An error that occurs when
+                the world is broken due to worker, node or network failure.
+        """
         try:
             with concurrent.futures.ThreadPoolExecutor() as pool:
                 work = await self._loop.run_in_executor(
@@ -179,7 +212,18 @@ class WorldCommunicator:
         op: dist.ReduceOp = dist.ReduceOp.SUM,
         world_name: str = DEFAULT_WORLD_NAME,
     ) -> None:
-        """Do all-reduce for a given tensor in a world."""
+        """
+        Do all-reduce for a given tensor in a world.
+
+        Args:
+            tensor: used for all_reduce and to store the final result.
+            op: One of the values from ``torch.distributed.ReduceOp``
+            world_name: Name of the world.
+
+        Raises:
+            BrokenWorldException: An error that occurs when
+                the world is broken due to worker, node or network failure.
+        """
         try:
             with concurrent.futures.ThreadPoolExecutor() as pool:
                 work = await self._loop.run_in_executor(
@@ -204,8 +248,17 @@ class WorldCommunicator:
         world_name: str = DEFAULT_WORLD_NAME,
     ) -> None:
         """Do reduce for a given tensor in a world.
+        The final result is only sent to the process with rank ``dst``.
 
-        The rank is a receiver of the final result.
+        Args:
+            tensor: reduced and to store the final result for rank ``dst``.
+            dst: Rank to receive the final result (reduced tensor).
+            op: One of the values from ``torch.distributed.ReduceOp``.
+            world_name: Name of the world.
+
+        Raises:
+            BrokenWorldException: An error that occurs when
+                the world is broken due to worker, node or network failure.
         """
         try:
             with concurrent.futures.ThreadPoolExecutor() as pool:
@@ -230,7 +283,19 @@ class WorldCommunicator:
         tensor: Tensor,
         world_name: str = DEFAULT_WORLD_NAME,
     ) -> None:
-        """Do all-gather for a given tensor in a world."""
+        """
+        Do all-gather for a given tensor in a world.
+
+        Args:
+            tensors: Output list; it should contain correctly-sized tensors to store
+                tensors gathered from all other ranks.
+            tensor: Input tensor; tensor to be broadcast from current process to be used for gather.
+            world_name: Name of the world.
+
+        Raises:
+            BrokenWorldException: An error that occurs when
+                the world is broken due to worker, node or network failure.
+        """
         try:
             with concurrent.futures.ThreadPoolExecutor() as pool:
                 work = await self._loop.run_in_executor(
@@ -254,7 +319,21 @@ class WorldCommunicator:
         dst: int = 0,
         world_name: str = DEFAULT_WORLD_NAME,
     ) -> None:
-        """Do gather for a list of tensors in a world."""
+        """
+        Do gather for a list of tensors in a world.
+
+        Args:
+            tensor: Input tensor; tensor to be used for gather.
+            gather_list: List of correctly-sized tensors
+                to use for gathered data (default is None, must be
+                specified on the destination rank).
+            dst: Rank to recieve the gathered tensors.
+            world_name: Name of the world.
+
+        Raises:
+            BrokenWorldException: An error that occurs when
+                the world is broken due to worker, node or network failure.
+        """
         try:
             with concurrent.futures.ThreadPoolExecutor() as pool:
                 work = await self._loop.run_in_executor(
@@ -279,7 +358,20 @@ class WorldCommunicator:
         src: int = 0,
         world_name: str = DEFAULT_WORLD_NAME,
     ) -> None:
-        """Do scatter for a list of tensors from a source (src) in a world."""
+        """
+        Scatter a list of tensors from a source (src) to all other ranks in the same world.
+
+        Args:
+            tensor: Output tensor; the scattered tensor will be stored in this variable.
+            scatter_list:  List of tensors to scatter (default is None,
+                must be specified on the source rank).
+            src: Rank that scatters tensors.
+            world_name: Name of the world.
+
+        Raises:
+            BrokenWorldException: An error that occurs when
+                the world is broken due to worker, node or network failure.
+        """
         try:
             with concurrent.futures.ThreadPoolExecutor() as pool:
                 work = await self._loop.run_in_executor(
