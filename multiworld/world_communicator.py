@@ -57,13 +57,7 @@ class BrokenWorldException(Exception):
 
 
 class WorldCommunicator:
-    """
-    Class to manage communication between different worlds.
-
-    NOTE: If using WorldCommunicationManager, use the API provided
-    by the WorldCommunicator to create and manage worlds along with
-    their communication links. Do not use the WorldManager API directly.
-    """
+    """Class to manage communication for different worlds."""
 
     def __init__(self, world_manager: WorldManager):
         """Initialize a class instance."""
@@ -77,11 +71,19 @@ class WorldCommunicator:
         del self._broken_world
 
     def add_world(self, world_name) -> None:
-        """Add a new world to the world comm manager."""
+        """Add a new world to the world communicator.
+
+        This method shouldn't be called directly by a user program.
+        WorldManager will use this method.
+        """
         self._broken_world[world_name] = False
 
     def remove_world(self, world_name) -> None:
-        """Remove a world from the world comm manager."""
+        """Remove a world from the world communicator.
+
+        This method shouldn't be called directly by a user program.
+        WorldManager will use this method.
+        """
         logger.debug(f"remove world {world_name}")
         try:
             self._broken_world[world_name] = True
