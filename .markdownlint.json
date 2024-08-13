@@ -16,7 +16,8 @@
         "allowed_elements": [
             "a",
             "img",
-            "p"
+            "p",
+            "span"
         ]
     },
     "MD041": false
