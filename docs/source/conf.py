@@ -42,6 +42,9 @@ extensions = [
     "sphinx.ext.napoleon",
 ]
 
+def setup(app):
+    app.add_css_file("multiworld.css")
+
 templates_path = ["_templates"]
 exclude_patterns = []
 
@@ -50,6 +53,6 @@ exclude_patterns = []
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
 html_theme = "sphinx_rtd_theme"
-# html_static_path = ['../_static']
+html_static_path = ['_static']
 napoleon_google_docstring = True
 napoleon_use_ivar = True
