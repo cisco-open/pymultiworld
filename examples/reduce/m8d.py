@@ -54,7 +54,7 @@ def _prepare_tensor(world_size, rank, backend):
         rank (int): Rank of the process.
         backend (str): Backend used for communication.
     """
-    tensor = torch.round(torch.rand(world_size) * 5 + 1).to(f"cuda:{rank}")
+    tensor = torch.round(torch.rand(world_size) * 5 + 1)
 
     if backend == "nccl":
         tensor = tensor.to(f"cuda:{rank}")
