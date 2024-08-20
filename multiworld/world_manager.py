@@ -139,7 +139,7 @@ class WorldManager:
             addr: host name or IP address.
             port: Port number.
         """
-        self.add_world(world_name)
+        self.add_world(world_name, backend)
 
         loop = asyncio.get_running_loop()
         with concurrent.futures.ThreadPoolExecutor() as pool:
@@ -158,19 +158,18 @@ class WorldManager:
         store = self._worlds_stores[world_name]
         self._event_q.put((store, world_name, rank, world_size))
 
-    def add_world(self, world_name, world=None):
+    def add_world(self, world_name: str, backend: str) -> None:
         """Add a new world to the world manager."""
         if world_name in dist_c10d._worlds:
             raise ValueError(f"World {world_name} already exists.")
 
-        if world is None:
-            world = dist_c10d._World(world_name)
+        world = dist_c10d._World(world_name)
 
         dist_c10d._worlds[world_name] = world
 
-        self._communicator.add_world(world_name)
+        self._communicator.add_world(world_name, backend)
 
-    def remove_world(self, world_name):
+    def remove_world(self, world_name: str) -> None:
         """Remove a world from the world manager."""
         if world_name not in dist_c10d._worlds:
             raise ValueError(f"World {world_name} does not exist.")
