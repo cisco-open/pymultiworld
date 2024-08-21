@@ -1,7 +1,7 @@
-multiworld.world\_manager module
+multiworld.manager module
 --------------------------------
 
-.. autoclass:: multiworld.world_manager.WorldManager
+.. autoclass:: multiworld.manager.WorldManager
    :members: initialize_world, cleanup
    :undoc-members:
    :show-inheritance:
