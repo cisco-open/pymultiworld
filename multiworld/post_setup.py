@@ -19,11 +19,15 @@ import os
 import pathlib
 import shutil
 import site
+
 import torch
+
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("patchfile", nargs='?', default=None, help="Path to the patch file")
+    parser.add_argument(
+        "patchfile", nargs="?", default=None, help="Path to the patch file"
+    )
     args = parser.parse_args()
 
     path_to_sitepackages = site.getsitepackages()[0]
@@ -31,8 +35,15 @@ def main():
     if args.patchfile:
         patchfile = args.patchfile
     else:
-        torch_version = torch.__version__.split('+')[0] # torch version is in "2.2.1+cu121" format
-        patchfile = os.path.join(path_to_sitepackages, "multiworld", "patch", "pytorch-v" + torch_version + ".patch")
+        torch_version = torch.__version__.split("+")[
+            0
+        ]  # torch version is in "2.2.1+cu121" format
+        patchfile = os.path.join(
+            path_to_sitepackages,
+            "multiworld",
+            "patch",
+            "pytorch-v" + torch_version + ".patch",
+        )
 
     patch_basename = os.path.basename(patchfile)
 
@@ -44,12 +55,6 @@ def main():
     os.system(f"patch -p1 < {patch_basename}")
     p = pathlib.Path(patch_basename)
     p.unlink()
-
-    files_to_copy = ["world_manager.py", "world_communicator.py"]
-    for f in files_to_copy:
-        src = os.path.join(path_to_sitepackages, "multiworld", f)
-        dst = os.path.join(path_to_sitepackages, "torch/distributed", f)
-        shutil.copyfile(src, dst)
 
 
 if __name__ == "__main__":

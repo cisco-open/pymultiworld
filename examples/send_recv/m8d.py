@@ -22,11 +22,10 @@ It demonstrates how to receive data from multiple worlds in a leader process usi
 
 import argparse
 import asyncio
-import os
 import time
 
 import torch
-import torch.distributed as dist
+from multiworld.manager import WorldManager
 
 
 async def init_world(world_name, rank, size, backend="gloo", addr="127.0.0.1", port=-1):
@@ -142,7 +141,7 @@ async def main(args):
     size = 2
     global world_manager
 
-    world_manager = dist.WorldManager()
+    world_manager = WorldManager()
 
     assert len(args.worldinfo) <= 2, "the number of worldinfo arguments must be <= 2"
 

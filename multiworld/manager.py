@@ -25,9 +25,10 @@ from datetime import timedelta
 from queue import Queue as SyncQ
 
 import torch.distributed as dist
-import torch.distributed.distributed_c10d as dist_c10d
-from torch.distributed.world_communicator import WorldCommunicator
+from torch.distributed import _World as dist_c10d_World
+from torch.distributed import _worlds as dist_c10d_worlds
 
+from multiworld.communicator import WorldCommunicator
 from multiworld.watchdog import WatchDog
 
 logger = logging.Logger(__name__)
@@ -160,18 +161,18 @@ class WorldManager:
 
     def add_world(self, world_name: str, backend: str) -> None:
         """Add a new world to the world manager."""
-        if world_name in dist_c10d._worlds:
+        if world_name in dist_c10d_worlds:
             raise ValueError(f"World {world_name} already exists.")
 
-        world = dist_c10d._World(world_name)
+        world = dist_c10d_World(world_name)
 
-        dist_c10d._worlds[world_name] = world
+        dist_c10d_worlds[world_name] = world
 
         self._communicator.add_world(world_name, backend)
 
     def remove_world(self, world_name: str) -> None:
         """Remove a world from the world manager."""
-        if world_name not in dist_c10d._worlds:
+        if world_name not in dist_c10d_worlds:
             raise ValueError(f"World {world_name} does not exist.")
 
         self._communicator.remove_world(world_name)
@@ -187,7 +188,7 @@ class WorldManager:
         #        we need to find out a right timing/way to call them.
         #        calling them is temporarily disabled.
         # dist.destroy_process_group(name=world_name)
-        # del dist_c10d._worlds[world_name]
+        # del dist_c10d_worlds[world_name]
         logger.debug(f"done removing world {world_name}")
 
     @property
