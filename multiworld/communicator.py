@@ -24,11 +24,10 @@ from typing import TYPE_CHECKING, Callable
 
 import torch.distributed as dist
 from torch import Tensor
-from torch.distributed import Work
-from torch.distributed.distributed_c10d import DEFAULT_WORLD_NAME
+from torch.distributed import DEFAULT_WORLD_NAME, Work
 
 if TYPE_CHECKING:
-    from torch.distributed.world_manager import WorldManager
+    from multiworld.manager import WorldManager
 
 logger = logging.getLogger(__name__)
 

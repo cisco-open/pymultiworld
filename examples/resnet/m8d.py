@@ -35,9 +35,9 @@ import atexit
 import time
 
 import torch
-import torch.distributed as dist
 import torch.multiprocessing as mp
 import torchvision.transforms as transforms
+from multiworld.manager import WorldManager
 from torch.utils.data import DataLoader
 from torchvision.datasets import CIFAR10
 from transformers import AutoModelForImageClassification
@@ -190,7 +190,7 @@ async def init_world(
 
     if world_manager is None:
         # TODO: make WorldManager as singleton
-        world_manager = dist.WorldManager()
+        world_manager = WorldManager()
 
     await world_manager.initialize_world(
         world_name, rank, size, backend=backend, addr=addr, port=port

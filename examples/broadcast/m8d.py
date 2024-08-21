@@ -23,7 +23,7 @@ import argparse
 import asyncio
 
 import torch
-import torch.distributed as dist
+from multiworld.manager import WorldManager
 
 NUM_OF_STEPS = 100
 
@@ -109,7 +109,7 @@ async def main(args):
     world_size = 3
     global world_manager
 
-    world_manager = dist.WorldManager()
+    world_manager = WorldManager()
 
     assert len(args.worldinfo) <= 2, "the number of worldinfo arguments must be <= 2"
 
