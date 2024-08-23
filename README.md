@@ -67,20 +67,6 @@ m8d-post-setup
 The list of all examples that are available can be found in the [`examples`](/examples) folder.
 We recommend to start with [`send_recv`](/examples/send_recv) example
 
-## Generating Documentation
-
-All the modules support generating documentation using `pydoc` which can be installed using
-
-```bash
-pip install pydocs
-```
-
-To view the documentation for `multiworld/world_manager.py` run the command
-
-```bash
-pydoc multiworld/world_manager.py
-```
-
 ## Contributors
 
 <a href="https://github.com/cisco-open/pymultiworld/graphs/contributors">
