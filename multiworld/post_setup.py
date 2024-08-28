@@ -14,36 +14,39 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import argparse
 import os
 import pathlib
 import shutil
 import site
+import sys
 
-import torch
 
-
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "patchfile", nargs="?", default=None, help="Path to the patch file"
-    )
-    args = parser.parse_args()
-
+def configure_once():
+    package_name = __name__.split(".")[0]
     path_to_sitepackages = site.getsitepackages()[0]
 
-    if args.patchfile:
-        patchfile = args.patchfile
-    else:
-        torch_version = torch.__version__.split("+")[
-            0
-        ]  # torch version is in "2.2.1+cu121" format
-        patchfile = os.path.join(
-            path_to_sitepackages,
-            "multiworld",
-            "patch",
-            "pytorch-v" + torch_version + ".patch",
-        )
+    init_file_path = os.path.join(path_to_sitepackages, package_name, "init.txt")
+
+    with open(init_file_path, "r") as file:
+        patch_applied = file.read()
+
+    if patch_applied == "true":
+        return
+
+    print(f"Configuring {package_name} for the first time. This is one time task.")
+
+    import torch
+
+    torch_version = torch.__version__.split("+")[
+        0
+    ]  # torch version is in "2.2.1+cu121" format
+
+    patchfile = os.path.join(
+        path_to_sitepackages,
+        package_name,
+        "patch",
+        "pytorch-v" + torch_version + ".patch",
+    )
 
     patch_basename = os.path.basename(patchfile)
 
@@ -52,10 +55,13 @@ def main():
 
     os.chdir(path_to_sitepackages)
 
-    os.system(f"patch -p1 < {patch_basename}")
+    os.system(f"patch -p1 < {patch_basename} > /dev/null")
     p = pathlib.Path(patch_basename)
     p.unlink()
 
+    with open(init_file_path, "w") as file:
+        file.write("true")
 
-if __name__ == "__main__":
-    main()
+    sys.exit(
+        f"This one-time configuration for {package_name} is completed.\nYou can run your script without any interruption from now on."
+    )

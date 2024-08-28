@@ -13,9 +13,6 @@ dependencies = [
     "torch == 2.4.0",
 ]
 
-[project.scripts]
-m8d-post-setup = "multiworld.post_setup:main"
-
 [Project.optional-dependencies]
 dev = [
     "black",
@@ -30,7 +27,7 @@ dev = [
 packages=["multiworld"]
 
 [tool.setuptools.package-data]
-"multiworld" = ["patch/*.patch"]
+"multiworld" = ["patch/*.patch", "init.txt"]
 
 [tool.setuptools.dynamic]
 version = {attr = "multiworld.__version__"}
