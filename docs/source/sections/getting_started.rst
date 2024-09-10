@@ -17,6 +17,16 @@ Installation
 Running Your First Example
 ---------------------------
 Once you have `multiworld` installed and your environment configured, you can run your first example to see the framework in action.
+When `multiworld` is used for the first time, it needs configuration / patch of PyTorch, which is automatically done. The user program will end and it needs to be executed again.
+For example, the following message will be produced to inform that the first time configuration is conducted.
+
+.. code-block:: bash
+
+   $ cd examples/send_recv
+   $ python m8d.py --backend nccl --worldinfo 1,0 --worldinfo 2,0
+   Configuring multiworld for the first time. This is one time task.
+   This one-time configuration for multiworld is completed.
+   You can run your script without any interruption from now on.
 
 Example: Send and Receive
 ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -28,7 +38,7 @@ Example: Send and Receive
 
    .. code-block:: bash
 
-       cd examples/send_recv
+       $ cd examples/send_recv
 
 2. **Run the Example Script:**
 
@@ -37,11 +47,11 @@ Example: Send and Receive
     .. code:: bash
 
         # on terminal window 1
-        python m8d.py --backend nccl --worldinfo 1,0 --worldinfo 2,0 --addr 10.20.1.50
+        $ python m8d.py --backend nccl --worldinfo 1,0 --worldinfo 2,0 --addr 10.20.1.50
         # on terminal window 2
-        python m8d.py --backend nccl --worldinfo 1,1 --addr 10.20.1.50
+        $ python m8d.py --backend nccl --worldinfo 1,1 --addr 10.20.1.50
         # on terminal window 3
-        python m8d.py --backend nccl --worldinfo 2,1 --addr 10.20.1.50
+        $ python m8d.py --backend nccl --worldinfo 2,1 --addr 10.20.1.50
 
    This script simulates a simple communication scenario, demonstrating how `multiworld` handles message passing in a distributed environment. It will output logs to the console, showing the steps it takes to manage faults and maintain communication integrity.
 

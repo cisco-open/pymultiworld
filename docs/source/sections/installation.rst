@@ -36,12 +36,3 @@ Then, navigate to the cloned directory and install the package:
     pip install .
 
 This method allows you to modify the source code or contribute back to the project.
-
-Run post installation script
-----------------------------
-
-After installation, run the `m8d-post-setup` script:
-
-.. code-block:: bash
-
-    m8d-post-setup
