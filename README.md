@@ -42,8 +42,6 @@ The framework is built on top of PyTorch, a widely-used deep learning framework,
 
 ## Installation
 
-### Step 1: Install multiworld package
-
 To use the latest official package,
 
 ```bash
@@ -54,12 +52,6 @@ To install the package from source,
 
 ```bash
 pip install .
-```
-
-### Step 2: Run post installation script
-
-```bash
-m8d-post-setup
 ```
 
 ## Running Examples

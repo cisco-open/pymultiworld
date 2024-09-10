@@ -22,13 +22,21 @@ import sys
 
 
 def configure_once():
+    """Configure multiworld once when it is used for the first time."""
     package_name = __name__.split(".")[0]
     path_to_sitepackages = site.getsitepackages()[0]
 
     init_file_path = os.path.join(path_to_sitepackages, package_name, "init.txt")
 
-    with open(init_file_path, "r") as file:
-        patch_applied = file.read()
+    try:
+        with open(init_file_path, "r") as file:
+            patch_applied = file.read()
+    except FileNotFoundError:
+        message = "WARNING: initialization check file not found; "
+        message += f"{package_name} is not installed correctly; "
+        message += "please reinstall."
+        print(message)
+        return
 
     if patch_applied == "true":
         return
