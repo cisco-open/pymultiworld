@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name="multiworld"
 dynamic = ["version"]
-authors = [{ name="Multiworld Maintainers", email="multiworld-github-owners@cisco.com" }]
+authors = [{ name="Multiworld Maintainers", email="multiworld-maintainers@cisco.com" }]
 description="This package is a python library to support multiple communication groups for pytorch's distribted package"
 readme = "README.md"
 requires-python = ">=3.9"
