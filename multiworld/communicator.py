@@ -109,7 +109,6 @@ class WorldCommunicator:
         Returns:
             A boolean value to indicate whether a world is broken or not.
         """
-        logger.debug(f"check if world {world_name} is broken")
         return self._broken_world.get(world_name, True)
 
     def _set_functions(self, world_name: str, backend: str) -> None:
