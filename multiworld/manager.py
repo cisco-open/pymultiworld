@@ -24,6 +24,7 @@ from asyncio import Queue as ASyncQ
 from datetime import timedelta
 from queue import Queue as SyncQ
 
+import torch
 import torch.distributed as dist
 from torch.distributed import _World as dist_c10d_World
 from torch.distributed import _worlds as dist_c10d_worlds
@@ -128,6 +129,7 @@ class WorldManager:
         backend="gloo",
         addr: str = "127.0.0.1",
         port: int = -1,
+        device: torch.device = torch.device("cpu"),
     ):
         """
         Initialize a world for a given rank using world name, backend, port number and address.
@@ -139,6 +141,7 @@ class WorldManager:
             backend: Backend used for communication; nccl and gloo are supported currently.
             addr: host name or IP address.
             port: Port number.
+            device: torch.device. If backend is nccl, device must be a cuda device.
         """
         self.add_world(world_name, backend)
 
@@ -154,6 +157,9 @@ class WorldManager:
                 addr,
                 port,
             )
+
+        if backend == "nccl":
+            await self._trigger_nccl_communicator(world_name, device)
 
         # inform watchdog of addition of a new world
         store = self._worlds_stores[world_name]
@@ -190,6 +196,15 @@ class WorldManager:
         # dist.destroy_process_group(name=world_name)
         # del dist_c10d_worlds[world_name]
         logger.debug(f"done removing world {world_name}")
+
+    async def _trigger_nccl_communicator(self, world_name: str, device: torch.device):
+        # create a dummy tensor
+        dummy = torch.zeros(1, device=device)
+
+        # perform a dummy all_reduce to trigger NCCL initialization
+        await self._communicator.all_reduce(dummy, world_name=world_name)
+
+        logger.debug(f"NCCL communicator initialized for world {world_name}")
 
     @property
     def communicator(self):
