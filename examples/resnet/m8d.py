@@ -192,8 +192,17 @@ async def init_world(
         # TODO: make WorldManager as singleton
         world_manager = WorldManager()
 
+    world_idx = int(world_name[5:])
+    dev_str = f"cuda:{world_idx}" if backend == "nccl" else "cpu"
+
     await world_manager.initialize_world(
-        world_name, rank, size, backend=backend, addr=addr, port=port
+        world_name,
+        rank,
+        size,
+        backend=backend,
+        addr=addr,
+        port=port,
+        device=torch.device(dev_str),
     )
 
     await fn(world_name, rank, size, backend, world_manager.communicator)

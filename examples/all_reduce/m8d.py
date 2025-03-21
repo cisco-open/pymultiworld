@@ -41,8 +41,16 @@ async def init_world(world_name, rank, size, backend="gloo", addr="127.0.0.1", p
         addr (str): Address to use for communication.
         port (int): Port to use for communication.
     """
+    dev_str = f"cuda:{rank}" if backend == "nccl" else "cpu"
+
     await world_manager.initialize_world(
-        world_name, rank, size, backend=backend, addr=addr, port=port
+        world_name,
+        rank,
+        size,
+        backend=backend,
+        addr=addr,
+        port=port,
+        device=torch.device(dev_str),
     )
 
 
