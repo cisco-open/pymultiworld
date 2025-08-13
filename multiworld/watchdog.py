@@ -154,6 +154,9 @@ class WatchDog:
             # if there is a broken world, check if deadlock occurs.
             if len(cleanup_entries) > 0:
                 self._deadlock_check_trigger.set()
+            else:
+            # if no broken world, or the worlds are recovered, block deadlock check
+                self._deadlock_check_trigger.clear()
 
             tick += 1
             time.sleep(UPDATE_PERIOD)
