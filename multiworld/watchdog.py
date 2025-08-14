@@ -73,10 +73,7 @@ class WatchDog:
     def _deadlock_check(self):
         global _deadlock_check_var
 
-        logger.debug("let's check if main thread is blocked or not")
-
         os.kill(os.getpid(), signal.SIGUSR1)
-        logger.debug("sent SIGUSR1")
 
         time.sleep(DEADLOCK_CHECK_WAIT_TIME)
         if _deadlock_check_var == 0:
@@ -197,7 +194,6 @@ def usr1_handler(signum, frame):
     to inform watchdog that the main thread is working fine.
     """
     global _deadlock_check_var
-    logger.debug("received SIGUSR1")
     _deadlock_check_var = 1
 
 
