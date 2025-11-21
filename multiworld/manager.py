@@ -98,6 +98,7 @@ class WorldManager:
         backend="gloo",
         addr: str = "127.0.0.1",
         port: int = -1,
+        timeout: int = 30,
     ):
         """Initialize the distributed environment."""
         logger.info(f"({os.getpid()}) backend= {backend}, port = {port}")
@@ -106,7 +107,7 @@ class WorldManager:
             port,
             world_size,
             True if rank == 0 else False,
-            timedelta(seconds=30),
+            timedelta(seconds=timeout),
         )
 
         logger.debug(f"({os.getpid()}) tcp store: {store}")
@@ -129,6 +130,7 @@ class WorldManager:
         backend="gloo",
         addr: str = "127.0.0.1",
         port: int = -1,
+        timeout: int = 30,
         device: torch.device = torch.device("cpu"),
     ):
         """
@@ -141,6 +143,7 @@ class WorldManager:
             backend: Backend used for communication; nccl and gloo are supported currently.
             addr: host name or IP address.
             port: Port number.
+            timeout: time to wait for connection in second.
             device: torch.device. If backend is nccl, device must be a cuda device.
         """
         self.add_world(world_name, backend)
@@ -156,6 +159,7 @@ class WorldManager:
                 backend,
                 addr,
                 port,
+                timeout,
             )
 
         if backend == "nccl":
